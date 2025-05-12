@@ -1,9 +1,31 @@
-require('dotenv').config();
-const express = require('express');
+import express from 'express';
+import cors from 'cors';
+import authRoutes from './src/routes/authRoutes.js';
+
+
 const app = express();
-const authRoutes = require('./routes/auth.routes');
 
+app.use(cors());
 app.use(express.json());
-app.use('/api/auth', authRoutes);
 
-module.exports = app;
+// Servir archivos estáticos desde la carpeta "public/uploads"
+app.use('/uploads', express.static('public/uploads'));
+
+app.get('/', (req, res) => {
+    return res.json({ result: 'OK' });
+});
+
+app.use('/api', authRoutes);
+
+// Manejo de errores de multer
+app.use((err, req, res, next) => {
+    if (err.code === 'LIMIT_FILE_TYPES') {
+        return res.status(422).json({ message: 'Tipo de archivo no permitido' });
+    }
+    if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(422).json({ message: 'El archivo es demasiado grande. Máximo 5MB' });
+    }
+    next(err);
+});
+
+export default app;
