@@ -51,8 +51,8 @@ const User = sequelize.define('User', {
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'modified_at',
-    deletedAt: 'deleted_at', // Add this for soft deletes
-    paranoid: true, // Add this for soft deletes
+    deletedAt: 'deleted_at', 
+    paranoid: true, 
     hooks: {
         beforeCreate: async (user) => {
             if (user.password) {

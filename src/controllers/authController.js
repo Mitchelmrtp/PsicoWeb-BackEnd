@@ -131,7 +131,6 @@ export const getProfile = async (req, res) => {
 
 export const deleteAccount = async (req, res) => {
     try {
-      // Check if password was provided
       if (!req.body.password) {
         return res.status(400).json({ 
           message: 'La contraseña es requerida para eliminar la cuenta' 
@@ -140,10 +139,9 @@ export const deleteAccount = async (req, res) => {
   
       const userId = req.user.userId;
       
-      // Find user with password field
       const user = await User.findOne({ 
         where: { id: userId },
-        attributes: ['id', 'password'] // Explicitly request password field
+        attributes: ['id', 'password'] 
       });
   
       if (!user) {
@@ -152,11 +150,9 @@ export const deleteAccount = async (req, res) => {
         });
       }
   
-      // Debug logs (remove in production)
       console.log('Password provided:', req.body.password);
       console.log('Stored hash:', user.password);
   
-      // Compare passwords
       const validPassword = await bcrypt.compare(
         req.body.password,
         user.password
@@ -168,7 +164,6 @@ export const deleteAccount = async (req, res) => {
         });
       }
   
-      // Perform deletion
       await user.destroy();
   
       res.status(200).json({ 
