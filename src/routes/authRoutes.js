@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { body } from 'express-validator';
 import { register, login, getProfile, deleteAccount } from '../controllers/authController.js';
 import authMiddleware from '../middleware/authMiddleware.js';
+import { forgotPassword } from '../controllers/passwordController.js';
 
 const router = Router();
 
@@ -16,6 +17,8 @@ router.post('/login', [
     body('email').isEmail().withMessage('Email inválido'),
     body('password').notEmpty().withMessage('La contraseña es obligatoria')
 ], login);
+
+router.post('/forgot-password', forgotPassword);
 
 router.get('/profile', authMiddleware, getProfile);
 
