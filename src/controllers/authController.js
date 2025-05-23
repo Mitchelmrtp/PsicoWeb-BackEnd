@@ -178,3 +178,40 @@ export const deleteAccount = async (req, res) => {
       });
     }
   };
+
+export const resetPassword = async (req, res) => {
+  const { token } = req.params;
+  const { password } = req.body;
+
+  if (!password) {
+    return res.status(400).json({ message: 'La nueva contraseña es requerida' });
+  }
+
+  try {
+    const resetData = await fs.readFile(dataFilePath, 'utf-8').then(JSON.parse);
+    const tokenData = resetData.find(t => t.token === token);
+
+    if (!tokenData) {
+      return res.status(400).json({ message: 'Token inválido o expirado' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findByPk(decoded.userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    user.password = password; // asegúrate de que tu modelo encripta automáticamente o hazlo aquí
+    await user.save();
+
+    // Elimina el token usado
+    const updatedTokens = resetData.filter(t => t.token !== token);
+    await fs.writeFile(dataFilePath, JSON.stringify(updatedTokens, null, 2));
+
+    return res.status(200).json({ message: 'Contraseña restablecida exitosamente' });
+  } catch (error) {
+    console.error('Error en resetPassword:', error);
+    return res.status(500).json({ message: 'Error al restablecer la contraseña' });
+  }
+};
