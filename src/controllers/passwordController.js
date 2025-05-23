@@ -7,6 +7,7 @@ import User from '../models/User.js';
 
 const dataFilePath = path.resolve('data', 'resetTokens.json');
 
+// --------- Solicitud de recuperación ---------
 export const forgotPassword = async (req, res) => {
   const { email } = req.body;
 
@@ -59,11 +60,55 @@ export const forgotPassword = async (req, res) => {
   }
 };
 
+// --------- Utilidad para leer tokens ---------
 const loadResetTokens = async () => {
   try {
     const file = await fs.readFile(dataFilePath, 'utf-8');
     return JSON.parse(file);
   } catch {
     return [];
+  }
+};
+
+// --------- Restablecer contraseña ---------
+export const resetPassword = async (req, res) => {
+  const { token } = req.params;
+  const { password } = req.body;
+
+  if (!password) {
+    return res.status(400).json({ message: 'La nueva contraseña es requerida' });
+  }
+
+  try {
+    const resetData = await loadResetTokens();
+    const tokenData = resetData.find(t => t.token === token);
+
+    if (!tokenData) {
+      return res.status(400).json({ message: 'Token inválido o expirado' });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      return res.status(400).json({ message: 'Token expirado o inválido' });
+    }
+
+    const user = await User.findByPk(decoded.userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    user.password = password; // Se debe encriptar automáticamente si el modelo lo hace
+    await user.save();
+
+    const updatedTokens = resetData.filter(t => t.token !== token);
+    await fs.writeFile(dataFilePath, JSON.stringify(updatedTokens, null, 2));
+
+    return res.status(200).json({ message: 'Contraseña restablecida exitosamente' });
+  } catch (error) {
+    console.error('Error en resetPassword:', error);
+    return res.status(500).json({ message: 'Error al restablecer la contraseña' });
   }
 };
