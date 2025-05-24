@@ -1,0 +1,32 @@
+import CitaService from "../services/CitaService.js";
+
+const crearCita = async (req, res) => {
+  try {
+    const userId = req.user?.userId;
+    const { fecha, hora, descripcion, metodoPago, diagnostico } = req.body;
+
+    if (!fecha || !hora || !metodoPago) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Faltan campos obligatorios" });
+    }
+
+    const cita = await CitaService.crearCita({
+      userId,
+      fecha,
+      hora,
+      descripcion,
+      metodoPago,
+      diagnostico,
+    });
+
+    res.status(201).json({ success: true, cita });
+  } catch (error) {
+    console.error("Error al crear cita:", error);
+    res.status(500).json({ success: false, message: "Error al crear la cita" });
+  }
+};
+
+export default {
+  crearCita,
+};
