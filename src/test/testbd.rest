@@ -1,0 +1,357 @@
+// ==================== AUTH TESTS ====================
+
+### Register new psychologist
+POST http://localhost:3005/api/register
+Content-Type: application/json
+
+{
+    "email": "psicologo_test@example.com",
+    "password": "password123",
+    "name": "Dr. Alejandro Mendez",
+    "first_name": "Alejandro",
+    "last_name": "Mendez",
+    "telephone": "555-123-4567",
+    "role": "psicologo",
+    "especialidad": "Psicología Clínica",
+    "licencia": "PSI-12345",
+    "formacion": "Universidad Nacional"
+}
+
+### Register new patient
+POST http://localhost:3005/api/register
+Content-Type: application/json
+
+{
+    "email": "paciente_test@example.com",
+    "password": "password123",
+    "name": "María García",
+    "first_name": "María",
+    "last_name": "García",
+    "telephone": "555-789-1234",
+    "role": "paciente",
+    "motivoConsulta": "Ansiedad y problemas de sueño"
+}
+
+### Register admin
+POST http://localhost:3005/api/register
+Content-Type: application/json
+
+{
+    "email": "admin_test@example.com",
+    "password": "admin123",
+    "name": "Admin Sistema",
+    "first_name": "Admin",
+    "last_name": "Sistema",
+    "telephone": "555-987-6543",
+    "role": "admin"
+}
+
+### Login as psychologist
+POST http://localhost:3005/api/login
+Content-Type: application/json
+
+{
+    "email": "psicologo_test@example.com",
+    "password": "password123"
+}
+
+### Login as patient
+POST http://localhost:3005/api/login
+Content-Type: application/json
+
+{
+    "email": "paciente_test@example.com",
+    "password": "password123"
+}
+
+### Login as admin
+POST http://localhost:3005/api/login
+Content-Type: application/json
+
+{
+    "email": "admin_test@example.com",
+    "password": "admin123"
+}
+
+### Forgot password
+POST http://localhost:3005/api/forgot-password
+Content-Type: application/json
+
+{
+    "email": "paciente_test@example.com"
+}
+
+### Reset password (replace TOKEN with the actual token received)
+POST http://localhost:3005/api/reset-password/TOKEN
+Content-Type: application/json
+
+{
+    "password": "newpassword123"
+}
+
+### Get user profile (replace with the token received after login)
+GET http://localhost:3005/api/profile
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIyNTVlNGExZi0wZTZjLTQ4MzMtOTU3YS0yOTE1ZmRhYmMzMjkiLCJyb2xlIjoicHNpY29sb2dvIiwiaWF0IjoxNzQ4MTc4MDI2LCJleHAiOjE3NDgyNjQ0MjZ9.QLt4-9k8srcBvgzja9Mbd-93iQzKydjb4TwNPr3NpeI
+
+
+// ==================== PSYCHOLOGIST TESTS ====================
+
+### Get all psychologists (public route)
+GET http://localhost:3005/api/psicologos
+
+### Get psychologist by ID (public route - replace :id with a valid psychologist ID)
+GET http://localhost:3005/api/psicologos/255e4a1f-0e6c-4833-957a-2915fdabc329
+
+### Update psychologist profile (requires psychologist role - replace PSICOLOGO_TOKEN with token)
+PUT http://localhost:3005/api/psicologos/profile
+Content-Type: application/json
+Authorization: Bearer PSICOLOGO_TOKEN
+
+{
+    "especialidad": "Psicología Clínica y Terapia Familiar",
+    "biografia": "Especialista en terapia cognitivo-conductual y terapia familiar con 6 años de experiencia.",
+    "anosExperiencia": 6,
+    "tarifaPorSesion": 110.00
+}
+
+### Get patients of psychologist (requires psychologist role - replace PSICOLOGO_TOKEN with token)
+GET http://localhost:3005/api/psicologos/pacientes
+Authorization: Bearer PSICOLOGO_TOKEN
+
+
+// ==================== PATIENT TESTS ====================
+
+### Get all patients (admin only - replace ADMIN_TOKEN with admin token)
+GET http://localhost:3005/api/pacientes
+Authorization: Bearer ADMIN_TOKEN
+
+### Get patient by ID (replace :id with valid patient ID and TOKEN with appropriate token)
+GET http://localhost:3005/api/pacientes/123e4567-e89b-12d3-a456-426614174001
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Update patient profile as patient (replace PACIENTE_TOKEN with patient token)
+PUT http://localhost:3005/api/pacientes/profile
+Content-Type: application/json
+Authorization: Bearer PACIENTE_TOKEN
+
+{
+    "motivoConsulta": "Ansiedad, problemas de sueño y estrés laboral"
+}
+
+### Update patient diagnose as psychologist (replace PSICOLOGO_TOKEN with psychologist token and :id with patient ID)
+PUT http://localhost:3005/api/pacientes/123e4567-e89b-12d3-a456-426614174001/diagnose
+Content-Type: application/json
+Authorization: Bearer PSICOLOGO_TOKEN
+
+{
+    "diagnosticoPreliminar": "Trastorno de ansiedad generalizada y estrés crónico"
+}
+
+### Assign psychologist to patient (replace :id with patient ID and appropriate token)
+POST http://localhost:3005/api/pacientes/123e4567-e89b-12d3-a456-426614174001/assign-psicologo
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+    "psicologoId": "123e4567-e89b-12d3-a456-426614174000"
+}
+
+
+// ==================== CALENDAR TESTS ====================
+
+### Get user's calendar (replace with appropriate token)
+GET http://localhost:3005/api/calendario
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Get calendar events (replace with appropriate token)
+GET http://localhost:3005/api/calendario/events?startDate=2025-01-01&endDate=2025-12-31
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Create calendar event (replace with appropriate token)
+POST http://localhost:3005/api/calendario/events
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIyNTVlNGExZi0wZTZjLTQ4MzMtOTU3YS0yOTE1ZmRhYmMzMjkiLCJyb2xlIjoicHNpY29sb2dvIiwiaWF0IjoxNzQ4MTkyNDkxLCJleHAiOjE3NDgyNzg4OTF9.RfleKsV_Y0uBO4f4AuP6N1BE06rCww9QRVqv30nJMnk
+
+{
+    "titulo": "Sesión inicial con paciente",
+    "descripcion": "Primera sesión de evaluación",
+    "fecha": "2025-05-30",
+    "horaInicio": "10:00:00",
+    "horaFin": "11:00:00",
+    "color": "#4287f5",
+    "tipo": "sesion"
+}
+
+### Update calendar event (replace :id with event ID and appropriate token)
+PUT http://localhost:3005/api/calendario/events/123e4567-e89b-12d3-a456-426614174003
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+    "titulo": "Sesión inicial con paciente (actualizada)",
+    "descripcion": "Primera sesión de evaluación y diagnóstico",
+    "fecha": "2025-05-30",
+    "horaInicio": "10:30:00",
+    "horaFin": "11:30:00"
+}
+
+### Delete calendar event (replace :id with event ID and appropriate token)
+DELETE http://localhost:3005/api/calendario/events/123e4567-e89b-12d3-a456-426614174003
+Authorization: Bearer YOUR_TOKEN_HERE
+
+
+// ==================== SESSION TESTS ====================
+
+### Get all sessions (filtered by role - replace with appropriate token)
+GET http://localhost:3005/api/sesiones?startDate=2025-01-01&endDate=2025-12-31&estado=programada
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Get session by ID (replace :id with session ID and appropriate token)
+GET http://localhost:3005/api/sesiones/123e4567-e89b-12d3-a456-426614174004
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Create session (replace with PSICOLOGO_TOKEN or PACIENTE_TOKEN)
+POST http://localhost:3005/api/sesiones
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+    "idPsicologo": "123e4567-e89b-12d3-a456-426614174000",
+    "idPaciente": "123e4567-e89b-12d3-a456-426614174001",
+    "fecha": "2025-06-15",
+    "horaInicio": "15:00:00",
+    "horaFin": "16:00:00",
+    "notas": "Sesión de seguimiento"
+}
+
+### Update session details as psychologist (replace :id with session ID and use PSICOLOGO_TOKEN)
+PUT http://localhost:3005/api/sesiones/123e4567-e89b-12d3-a456-426614174004
+Content-Type: application/json
+Authorization: Bearer PSICOLOGO_TOKEN
+
+{
+    "fecha": "2025-06-16",
+    "horaInicio": "16:00:00",
+    "horaFin": "17:00:00",
+    "notas": "Sesión de seguimiento (reprogramada)",
+    "estado": "programada"
+}
+
+### Cancel session as patient (replace :id with session ID and use PACIENTE_TOKEN)
+PUT http://localhost:3005/api/sesiones/123e4567-e89b-12d3-a456-426614174004
+Content-Type: application/json
+Authorization: Bearer PACIENTE_TOKEN
+
+{
+    "estado": "cancelada"
+}
+
+### Mark session as completed (requires psychologist role - replace :id with session ID)
+PUT http://localhost:3005/api/sesiones/123e4567-e89b-12d3-a456-426614174004/complete
+Content-Type: application/json
+Authorization: Bearer PSICOLOGO_TOKEN
+
+{
+    "estado": "completada",
+    "notas": "Sesión completada satisfactoriamente. El paciente muestra avances."
+}
+
+### Update session notes (requires psychologist role - replace :id with session ID)
+PUT http://localhost:3005/api/sesiones/123e4567-e89b-12d3-a456-426614174004/notes
+Content-Type: application/json
+Authorization: Bearer PSICOLOGO_TOKEN
+
+{
+    "notas": "El paciente muestra mejora en sus síntomas de ansiedad."
+}
+
+### Delete session (requires psychologist role or admin - replace :id with session ID)
+DELETE http://localhost:3005/api/sesiones/123e4567-e89b-12d3-a456-426614174004
+Authorization: Bearer PSICOLOGO_TOKEN
+
+
+// ==================== TEST TESTS ====================
+
+### Get all tests (any authenticated user)
+GET http://localhost:3005/api/pruebas
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Get test by ID (any authenticated user)
+GET http://localhost:3005/api/pruebas/123e4567-e89b-12d3-a456-426614174005
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Create test (admin only - replace ADMIN_TOKEN with admin token)
+POST http://localhost:3005/api/pruebas
+Content-Type: application/json
+Authorization: Bearer ADMIN_TOKEN
+
+{
+    "titulo": "Evaluación de Ansiedad",
+    "descripcion": "Este test evalúa los niveles de ansiedad del paciente mediante una serie de preguntas estandarizadas.",
+    "activa": true
+}
+
+### Update test (admin only - replace :id with test ID and ADMIN_TOKEN with admin token)
+PUT http://localhost:3005/api/pruebas/123e4567-e89b-12d3-a456-426614174005
+Content-Type: application/json
+Authorization: Bearer ADMIN_TOKEN
+
+{
+    "titulo": "Evaluación de Ansiedad (Versión 2)",
+    "descripcion": "Este test evalúa los niveles de ansiedad del paciente mediante preguntas estandarizadas basadas en criterios DSM-5.",
+    "activa": true
+}
+
+### Add question to test (admin only - replace :id with test ID and ADMIN_TOKEN with admin token)
+POST http://localhost:3005/api/pruebas/123e4567-e89b-12d3-a456-426614174005/preguntas
+Content-Type: application/json
+Authorization: Bearer ADMIN_TOKEN
+
+{
+    "enunciado": "¿Con qué frecuencia siente nerviosismo o ansiedad?",
+    "opciones": [
+        {"valor": "0", "texto": "Nunca"},
+        {"valor": "1", "texto": "Algunos días"},
+        {"valor": "2", "texto": "Más de la mitad de los días"},
+        {"valor": "3", "texto": "Casi todos los días"}
+    ],
+    "pesoEvaluativo": 2
+}
+
+### Update question (admin only - replace IDs and ADMIN_TOKEN with admin token)
+PUT http://localhost:3005/api/pruebas/123e4567-e89b-12d3-a456-426614174005/preguntas/123e4567-e89b-12d3-a456-426614174006
+Content-Type: application/json
+Authorization: Bearer ADMIN_TOKEN
+
+{
+    "enunciado": "¿Con qué frecuencia siente nerviosismo, ansiedad o está al límite?",
+    "opciones": [
+        {"valor": "0", "texto": "Nunca"},
+        {"valor": "1", "texto": "Algunos días"},
+        {"valor": "2", "texto": "Más de la mitad de los días"},
+        {"valor": "3", "texto": "Casi todos los días"}
+    ]
+}
+
+### Delete question (admin only - replace IDs and ADMIN_TOKEN with admin token)
+DELETE http://localhost:3005/api/pruebas/123e4567-e89b-12d3-a456-426614174005/preguntas/123e4567-e89b-12d3-a456-426614174006
+Authorization: Bearer ADMIN_TOKEN
+
+### Submit test results (replace with appropriate token - psychologist for their patient, patient for themselves)
+POST http://localhost:3005/api/pruebas/123e4567-e89b-12d3-a456-426614174005/resultados
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+    "idPaciente": "123e4567-e89b-12d3-a456-426614174001",
+    "resultado": "15/21",
+    "interpretacion": "El paciente muestra signos de ansiedad moderada que requieren seguimiento."
+}
+
+### Get all test results (filtered by user role - replace with appropriate token)
+GET http://localhost:3005/api/pruebas/resultados?pacienteId=123e4567-e89b-12d3-a456-426614174001
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Get test result by ID (replace :id with result ID and appropriate token)
+GET http://localhost:3005/api/pruebas/resultados/123e4567-e89b-12d3-a456-426614174007
+Authorization: Bearer YOUR_TOKEN_HERE

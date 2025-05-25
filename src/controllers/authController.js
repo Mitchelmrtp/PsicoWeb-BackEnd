@@ -1,7 +1,9 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
+import { sequelize } from '../models/index.js';
+import * as models from '../models/index.js';
 import Joi from 'joi';
+import fs from 'fs/promises';
 
 const registerSchema = Joi.object({
     email: Joi.string().email().required(),
@@ -10,7 +12,29 @@ const registerSchema = Joi.object({
     first_name: Joi.string().optional(),
     last_name: Joi.string().optional(),
     telephone: Joi.string().optional(),
-    role: Joi.string().valid('user', 'admin').default('user')
+    role: Joi.string().valid('admin', 'psicologo', 'paciente').default('paciente'),
+    // Fields for psychologist
+    especialidad: Joi.when('role', {
+        is: 'psicologo',
+        then: Joi.string().optional(),
+        otherwise: Joi.forbidden()
+    }),
+    licencia: Joi.when('role', {
+        is: 'psicologo',
+        then: Joi.string().optional(),
+        otherwise: Joi.forbidden()
+    }),
+    formacion: Joi.when('role', {
+        is: 'psicologo',
+        then: Joi.string().optional(),
+        otherwise: Joi.forbidden()
+    }),
+    // Fields for patient
+    motivoConsulta: Joi.when('role', {
+        is: 'paciente',
+        then: Joi.string().optional(),
+        otherwise: Joi.forbidden()
+    })
 });
 
 const loginSchema = Joi.object({
@@ -27,40 +51,72 @@ export const register = async (req, res) => {
     try {
         const { email, password, name, first_name, last_name, telephone, role } = req.body;
 
-        const userExists = await User.findOne({ where: { email } });
+        const userExists = await models.User.findOne({ where: { email } });
         if (userExists) {
             return res.status(400).json({ message: 'El usuario ya existe' });
         }
 
-        const user = await User.create({
-            email,
-            password,
-            name,
-            first_name,
-            last_name,
-            telephone,
-            role: role || 'user'
-        });
+        // Start a transaction to ensure data consistency
+        const transaction = await sequelize.transaction();
 
-        const token = jwt.sign(
-            { 
-                userId: user.id,
-                role: user.role
-            },
-            process.env.JWT_SECRET,
-            { expiresIn: '24h' }
-        );
+        try {
+            // 1. Create the base user record
+            const user = await models.User.create({
+                email,
+                password,
+                name,
+                first_name,
+                last_name,
+                telephone,
+                role: role || 'paciente' // Default role is paciente
+            }, { transaction });
 
-        res.status(201).json({
-            message: 'Usuario creado exitosamente',
-            token,
-            user: {
-                id: user.id,
-                name: user.name,
-                email: user.email,
-                role: user.role
+            // 2. Create role-specific profile based on role
+            if (role === 'psicologo') {
+                // Create minimal psychologist profile
+                await models.Psicologo.create({
+                    id: user.id,
+                    especialidad: req.body.especialidad || 'No especificada',
+                    licencia: req.body.licencia || 'Pendiente',
+                    formacion: req.body.formacion || 'No especificada'
+                }, { transaction });
+            } 
+            else if (role === 'paciente') {
+                // Create minimal patient profile
+                await models.Paciente.create({
+                    id: user.id,
+                    motivoConsulta: req.body.motivoConsulta || 'No especificado'
+                }, { transaction });
             }
-        });
+
+            // Commit transaction
+            await transaction.commit();
+
+            // Generate token
+            const token = jwt.sign(
+                { 
+                    userId: user.id,
+                    role: user.role
+                },
+                process.env.JWT_SECRET,
+                { expiresIn: '24h' }
+            );
+
+            res.status(201).json({
+                message: 'Usuario creado exitosamente',
+                token,
+                user: {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    role: user.role
+                }
+            });
+        } catch (error) {
+            // Rollback transaction on error
+            await transaction.rollback();
+            throw error;
+        }
     } catch (error) {
         res.status(500).json({ message: 'Error en el servidor', error: error.message });
     }
@@ -75,7 +131,7 @@ export const login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        const user = await User.findOne({ where: { email } });
+        const user = await models.User.findOne({ where: { email } });
         if (!user) {
             return res.status(400).json({ message: 'Credenciales inválidas' });
         }
@@ -114,7 +170,7 @@ export const login = async (req, res) => {
 
 export const getProfile = async (req, res) => {
     try {
-        const user = await User.findByPk(req.user.userId, {
+        const user = await models.User.findByPk(req.user.userId, {
             attributes: { exclude: ['password'] }
         });
         
@@ -139,7 +195,7 @@ export const deleteAccount = async (req, res) => {
   
       const userId = req.user.userId;
       
-      const user = await User.findOne({ 
+      const user = await models.User.findOne({ 
         where: { id: userId },
         attributes: ['id', 'password'] 
       });
@@ -196,7 +252,7 @@ export const resetPassword = async (req, res) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findByPk(decoded.userId);
+    const user = await models.User.findByPk(decoded.userId);
 
     if (!user) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
