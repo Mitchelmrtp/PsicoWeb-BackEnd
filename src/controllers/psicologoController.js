@@ -1,6 +1,9 @@
 import Psicologo from '../models/Psicologo.js';
 import User from '../models/User.js';
 import Joi from 'joi';
+import Sesion from '../models/Sesion.js';
+import Paciente from '../models/Paciente.js';
+import { Op } from 'sequelize';
 
 const psicologoSchema = Joi.object({
     especialidad: Joi.string().required(),
@@ -16,7 +19,7 @@ export const findAll = async (req, res) => {
         const psicologos = await Psicologo.findAll({
             include: [{
                 model: User,
-                attributes: ['name', 'email', 'telephone']
+                attributes: ['name', 'email', 'telephone', 'first_name', 'last_name']
             }]
         });
         
@@ -127,11 +130,72 @@ export const findPacientes = async (req, res) => {
     }
 };
 
+export const getPacientes = async (req, res) => {
+  try {
+    // Get the authenticated psychologist's ID from the request
+    // This assumes your auth middleware sets req.user
+    const idPsicologo = req.user.id;
+    
+    console.log('Fetching patients for psychologist ID:', idPsicologo);
+    
+    // Find all sessions for this psychologist
+    const sesiones = await Sesion.findAll({
+      where: {
+        idPsicologo: idPsicologo
+      },
+      include: [{
+        model: Paciente,
+        as: 'Paciente', // Make sure this alias matches your association definition
+        attributes: ['id', 'first_name', 'last_name', 'email', 'diagnostico']
+      }],
+      attributes: ['id', 'fecha', 'estado'],
+      order: [['fecha', 'DESC']]
+    });
+    
+    console.log(`Found ${sesiones.length} sessions`);
+    
+    // Extract unique patients
+    const pacientesMap = new Map();
+    
+    sesiones.forEach(sesion => {
+      const sesionJSON = sesion.toJSON();
+      if (sesionJSON.Paciente) {
+        const paciente = sesionJSON.Paciente;
+        
+        // If this patient is not already in the map or if this session is newer
+        if (!pacientesMap.has(paciente.id) || 
+            new Date(sesion.fecha) > new Date(pacientesMap.get(paciente.id).lastAppointment)) {
+          
+          pacientesMap.set(paciente.id, {
+            ...paciente,
+            lastAppointment: sesion.fecha
+          });
+        }
+      }
+    });
+    
+    // Convert map to array
+    const pacientes = Array.from(pacientesMap.values());
+    
+    console.log(`Returning ${pacientes.length} unique patients`);
+    return res.status(200).json(pacientes);
+    
+  } catch (error) {
+    console.error('Error in getPacientes controller:', error);
+    return res.status(500).json({ 
+      message: 'Error al obtener pacientes', 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+};
+
 export default {
     findAll,
     findById,
     create,
     update,
     remove,
-    findPacientes
+    findPacientes,
+    getPacientes
 };

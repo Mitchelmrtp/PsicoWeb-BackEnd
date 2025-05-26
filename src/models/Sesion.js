@@ -35,11 +35,9 @@ const Sesion = sequelize.define('Sesion', {
     },
     horaFin: {
         type: DataTypes.TIME,
-        allowNull: false
+        allowNull: true
     },
-    notas: {
-        type: DataTypes.TEXT
-    },
+
     estado: {
         type: DataTypes.ENUM('programada', 'completada', 'cancelada'),
         defaultValue: 'programada'

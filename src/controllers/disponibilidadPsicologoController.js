@@ -28,6 +28,33 @@ export const findAllByPsicologo = async (req, res) => {
     }
 };
 
+export const findByPsicologoId = async (req, res) => {
+    try {
+        const psicologoId = req.params.id;
+        
+        // Verificar que el psicólogo existe
+        const psicologo = await Psicologo.findByPk(psicologoId);
+        if (!psicologo) {
+            return res.status(404).json({ message: 'Psicólogo no encontrado' });
+        }
+        
+        const disponibilidades = await DisponibilidadPsicologo.findAll({
+            where: {
+                idPsicologo: psicologoId,
+                activo: true
+            },
+            order: [
+                ['diaSemana', 'ASC'],
+                ['horaInicio', 'ASC']
+            ]
+        });
+        
+        res.status(200).json(disponibilidades);
+    } catch (error) {
+        res.status(500).json({ message: 'Error del servidor', error: error.message });
+    }
+};
+
 export const create = async (req, res) => {
     const { error } = disponibilidadSchema.validate(req.body);
     if (error) {
@@ -151,6 +178,7 @@ export const remove = async (req, res) => {
 
 export default {
     findAllByPsicologo,
+    findByPsicologoId,
     create,
     update,
     remove

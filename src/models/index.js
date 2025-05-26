@@ -86,6 +86,7 @@ Sesion.belongsTo(Paciente, {
 // Test and questions relationships
 Prueba.hasMany(Pregunta, { 
   foreignKey: 'idPrueba',
+  as: 'Preguntas',  // El alias usado
   onDelete: 'CASCADE' 
 });
 Pregunta.belongsTo(Prueba, { 

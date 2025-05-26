@@ -36,6 +36,14 @@ const ResultadoPrueba = sequelize.define('ResultadoPrueba', {
     },
     interpretacion: {
         type: DataTypes.TEXT
+    },
+    puntuacionTotal: {
+        type: DataTypes.FLOAT,
+        allowNull: true
+    },
+    puntuacionPromedio: {
+        type: DataTypes.FLOAT,
+        allowNull: true
     }
 }, {
     tableName: 'resultado_prueba',

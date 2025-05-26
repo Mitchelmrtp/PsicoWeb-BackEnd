@@ -1,8 +1,18 @@
 const adminMiddleware = (req, res, next) => {
-    if (!req.user || req.user.role !== 'admin') {
-        return res.status(403).json({ message: 'Access denied. Admin role required.' });
+    const user = req.user;
+    
+    if (!user) {
+        return res.status(401).json({ message: 'No autorizado' });
     }
-    next();
+    
+    // Permitir tanto a administradores como a psicólogos
+    if (user.role === 'admin' || user.role === 'psicologo') {
+        next();
+    } else {
+        return res.status(403).json({ 
+            message: 'No tiene permisos suficientes para realizar esta acción' 
+        });
+    }
 };
 
 export default adminMiddleware;

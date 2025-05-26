@@ -1,8 +1,7 @@
 import express from 'express';
-import PsicologoController from '../controllers/psicologoController.js';
+import * as PsicologoController from '../controllers/psicologoController.js';
 import authMiddleware from '../middleware/authMiddleware.js';
 import psicologoMiddleware from '../middleware/psicologoMiddleware.js';
-import adminMiddleware from '../middleware/adminMiddleware.js';
 
 const router = express.Router();
 
@@ -16,6 +15,6 @@ router.post('/profile', authMiddleware, PsicologoController.create);
 // Routes requiring psychologist role
 router.put('/profile', authMiddleware, psicologoMiddleware, PsicologoController.update);
 router.delete('/profile', authMiddleware, psicologoMiddleware, PsicologoController.remove);
-router.get('/pacientes', authMiddleware, psicologoMiddleware, PsicologoController.findPacientes);
+router.get('/pacientes', authMiddleware, PsicologoController.getPacientes);
 
 export default router;

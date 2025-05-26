@@ -4,6 +4,7 @@ import ResultadoPrueba from '../models/ResultadoPrueba.js';
 import Paciente from '../models/Paciente.js';
 import Psicologo from '../models/Psicologo.js';
 import Joi from 'joi';
+import { sequelize } from '../models/index.js';
 
 const pruebaSchema = Joi.object({
     titulo: Joi.string().required(),
@@ -20,45 +21,94 @@ const preguntaSchema = Joi.object({
 const resultadoSchema = Joi.object({
     idPaciente: Joi.string().required(),
     resultado: Joi.string().required(),
-    interpretacion: Joi.string().optional()
+    interpretacion: Joi.string().optional(),
+    puntuacionTotal: Joi.number().optional(),
+    puntuacionPromedio: Joi.number().optional()
 });
 
 export const findAll = async (req, res) => {
     try {
         const pruebas = await Prueba.findAll({
-            where: req.user.role !== 'admin' ? { activa: true } : {}
+            include: [{
+                model: Pregunta,
+                as: 'Preguntas'  // Incluir el alias aquí también
+            }]
         });
         
         res.status(200).json(pruebas);
     } catch (error) {
+        console.error('Error in findAll:', error);
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
 
 export const findById = async (req, res) => {
     try {
+        console.log(`Finding test with id: ${req.params.id}`);
+        
+        // Primero buscar la prueba por su ID
         const prueba = await Prueba.findByPk(req.params.id, {
             include: [{
                 model: Pregunta,
-                attributes: ['id', 'enunciado', 'opciones', 'pesoEvaluativo']
+                as: 'Preguntas'
             }]
         });
         
         if (!prueba) {
+            console.log(`Test with id ${req.params.id} not found`);
             return res.status(404).json({ message: 'Test not found' });
         }
         
-        if (req.user.role !== 'admin' && !prueba.activa) {
-            return res.status(403).json({ message: 'You are not authorized to view this test' });
+        // Convertir a JSON y manipular las preguntas
+        const testData = prueba.toJSON();
+        
+        console.log(`Test found: ${testData.titulo}`);
+        console.log(`Questions count: ${testData.Preguntas ? testData.Preguntas.length : 0}`);
+        
+        // Obtener las opciones directamente de la base de datos para cada pregunta
+        if (testData.Preguntas && testData.Preguntas.length > 0) {
+            for (let i = 0; i < testData.Preguntas.length; i++) {
+                const preguntaId = testData.Preguntas[i].id;
+                
+                // Obtener el registro raw de la pregunta para asegurar que tenemos el dato sin procesar
+                const preguntaRaw = await sequelize.query(
+                    `SELECT opciones FROM pregunta WHERE id = ?`,
+                    {
+                        replacements: [preguntaId],
+                        type: sequelize.QueryTypes.SELECT,
+                        raw: true
+                    }
+                );
+                
+                if (preguntaRaw && preguntaRaw.length > 0) {
+                    let opcionesStr = preguntaRaw[0].opciones;
+                    console.log(`Raw options for question ${preguntaId}:`, opcionesStr);
+                    
+                    try {
+                        // Intentar parsear las opciones como JSON
+                        const opciones = JSON.parse(opcionesStr);
+                        testData.Preguntas[i].opciones = opciones;
+                    } catch (e) {
+                        console.error(`Error parsing options for question ${preguntaId}:`, e);
+                        testData.Preguntas[i].opciones = [];
+                    }
+                }
+            }
         }
         
-        res.status(200).json(prueba);
+        res.status(200).json(testData);
     } catch (error) {
+        console.error('Error in findById:', error);
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
 
 export const create = async (req, res) => {
+    // Only allow admin and psychologists to create tests
+    if (req.user.role !== 'admin' && req.user.role !== 'psicologo') {
+        return res.status(403).json({ message: 'You are not authorized to create tests' });
+    }
+
     const { error } = pruebaSchema.validate(req.body);
     if (error) {
         return res.status(400).json({ message: 'Validation error', error: error.details });
@@ -117,6 +167,9 @@ export const createPregunta = async (req, res) => {
     }
 
     try {
+        console.log('Request body:', req.body);
+        console.log('Test ID:', req.params.id);
+        
         const prueba = await Prueba.findByPk(req.params.id);
         if (!prueba) {
             return res.status(404).json({ message: 'Test not found' });
@@ -129,7 +182,8 @@ export const createPregunta = async (req, res) => {
         
         res.status(201).json(pregunta);
     } catch (error) {
-        res.status(500).json({ message: 'Server error', error: error.message });
+        console.error('Error creating question:', error);
+        return res.status(400).json({ message: error.message });
     }
 };
 
@@ -303,6 +357,113 @@ export const findResultadoById = async (req, res) => {
     }
 };
 
+export const updatePreguntaOpciones = async (req, res) => {
+  try {
+    const { testId, preguntaId } = req.params;
+    const { opciones } = req.body;
+
+    if (!Array.isArray(opciones)) {
+      return res.status(400).json({ message: 'Las opciones deben ser un array' });
+    }
+
+    // Verificar si la pregunta existe y pertenece al test
+    const pregunta = await Pregunta.findOne({
+      where: {
+        id: preguntaId,
+        idPrueba: testId
+      }
+    });
+
+    if (!pregunta) {
+      return res.status(404).json({ message: 'Pregunta no encontrada' });
+    }
+
+    // Actualizar las opciones
+    pregunta.opciones = opciones;
+    await pregunta.save();
+
+    res.status(200).json({
+      message: 'Opciones actualizadas correctamente',
+      pregunta
+    });
+  } catch (error) {
+    console.error('Error actualizando opciones:', error);
+    res.status(500).json({ message: 'Error del servidor', error: error.message });
+  }
+};
+
+export const findPreguntaById = async (req, res) => {
+  try {
+    const { id: testId, preguntaId } = req.params;
+    
+    const pregunta = await Pregunta.findOne({
+      where: {
+        id: preguntaId,
+        idPrueba: testId
+      }
+    });
+    
+    if (!pregunta) {
+      return res.status(404).json({ message: 'Pregunta no encontrada' });
+    }
+    
+    // Procesar las opciones
+    let opciones = pregunta.opciones;
+    if (typeof opciones === 'string') {
+      try {
+        opciones = JSON.parse(opciones);
+      } catch (e) {
+        console.error(`Error parsing options for question ${pregunta.id}:`, e);
+        opciones = [];
+      }
+    } else if (!Array.isArray(opciones)) {
+      opciones = [];
+    }
+    
+    const preguntaData = pregunta.toJSON();
+    preguntaData.opciones = opciones;
+    
+    res.status(200).json(preguntaData);
+  } catch (error) {
+    console.error('Error finding question:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Add this method or update if it exists
+export const getResultadosByPaciente = async (req, res) => {
+  try {
+    const { pacienteId } = req.query;
+    
+    // Validate pacienteId
+    if (!pacienteId) {
+      return res.status(400).json({ 
+        message: 'pacienteId parameter is required',
+        error: 'Missing required parameter'
+      });
+    }
+    
+    const resultados = await ResultadoPrueba.findAll({
+      where: { idPaciente: pacienteId },
+      include: [
+        {
+          model: Prueba,
+          attributes: ['titulo', 'descripcion']
+        }
+      ],
+      order: [['created_at', 'DESC']]
+    });
+    
+    res.status(200).json(resultados);
+  } catch (error) {
+    console.error('Error getting test results:', error);
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: error.message 
+    });
+  }
+};
+
 export default {
     findAll,
     findById,
@@ -314,5 +475,8 @@ export default {
     removePregunta,
     createResultado,
     findResultados,
-    findResultadoById
+    findResultadoById,
+    updatePreguntaOpciones,
+    findPreguntaById,
+    getResultadosByPaciente
 };

@@ -1,6 +1,7 @@
 import Sesion from '../models/Sesion.js';
 import Psicologo from '../models/Psicologo.js';
 import Paciente from '../models/Paciente.js';
+import User from '../models/User.js';
 import { Op } from 'sequelize';
 import Joi from 'joi';
 
@@ -58,8 +59,22 @@ export const findAll = async (req, res) => {
         const sesiones = await Sesion.findAll({
             where,
             include: [
-                { model: Psicologo },
-                { model: Paciente }
+                { 
+                    model: Psicologo, 
+                    as: 'Psicologo',
+                    include: [{ 
+                        model: User, 
+                        attributes: ['name', 'first_name', 'last_name', 'email'] 
+                    }]
+                },
+                { 
+                    model: Paciente, 
+                    as: 'Paciente',
+                    include: [{ 
+                        model: User, 
+                        attributes: ['name', 'first_name', 'last_name', 'email'] 
+                    }]
+                }
             ],
             order: [['fecha', 'ASC'], ['horaInicio', 'ASC']]
         });
@@ -74,8 +89,22 @@ export const findById = async (req, res) => {
     try {
         const sesion = await Sesion.findByPk(req.params.id, {
             include: [
-                { model: Psicologo },
-                { model: Paciente }
+                { 
+                    model: Psicologo, 
+                    as: 'Psicologo',
+                    include: [{ 
+                        model: User, 
+                        attributes: ['name', 'first_name', 'last_name', 'email'] 
+                    }]
+                },
+                { 
+                    model: Paciente, 
+                    as: 'Paciente',
+                    include: [{ 
+                        model: User, 
+                        attributes: ['name', 'first_name', 'last_name', 'email'] 
+                    }]
+                }
             ]
         });
         

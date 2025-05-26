@@ -1,8 +1,18 @@
 const psicologoMiddleware = (req, res, next) => {
-    if (!req.user || req.user.role !== 'psicologo') {
-        return res.status(403).json({ message: 'Acceso denegado. Se requiere rol de psicólogo.' });
+    const user = req.user;
+    
+    if (!user) {
+        return res.status(401).json({ message: 'No autorizado' });
     }
-    next();
+    
+    // Permitir a psicólogos y administradores
+    if (user.role === 'psicologo' || user.role === 'admin') {
+        next();
+    } else {
+        return res.status(403).json({ 
+            message: 'Solo los psicólogos pueden realizar esta acción' 
+        });
+    }
 };
 
 export default psicologoMiddleware;
