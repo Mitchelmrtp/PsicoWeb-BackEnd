@@ -7,13 +7,13 @@ import calendarioRoutes from "./src/routes/calendarioRoutes.js";
 import sesionRoutes from "./src/routes/sesionRoutes.js";
 import pruebaRoutes from "./src/routes/pruebaRoutes.js";
 import disponibilidadPsicologoRoutes from "./src/routes/disponibilidadPsicologoRoutes.js";
+import notificationRoutes from "./src/routes/notificationRoutes.js";
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-// Servir archivos estáticos desde la carpeta "public/uploads"
 app.use("/uploads", express.static("public/uploads"));
 
 app.get("/", (req, res) => {
@@ -28,8 +28,8 @@ app.use("/api/calendario", calendarioRoutes);
 app.use("/api/sesiones", sesionRoutes);
 app.use("/api/pruebas", pruebaRoutes);
 app.use("/api/disponibilidad", disponibilidadPsicologoRoutes);
+app.use("/api/notificaciones", notificationRoutes);
 
-// Manejo de errores de multer
 app.use((err, req, res, next) => {
   if (err.code === "LIMIT_FILE_TYPES") {
     return res.status(422).json({ message: "Tipo de archivo no permitido" });
