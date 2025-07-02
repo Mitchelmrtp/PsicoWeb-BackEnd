@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import authMiddleware from "./src/middleware/authMiddleware.js";
 import authRoutes from "./src/routes/authRoutes.js";
 import psicologoRoutes from "./src/routes/psicologoRoutes.js";
 import pacienteRoutes from "./src/routes/pacienteRoutes.js";
@@ -11,13 +12,88 @@ import notificationRoutes from "./src/routes/notificationRoutes.js";
 
 const app = express();
 
-app.use(cors());
+// Better CORS configuration
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 
 app.use("/uploads", express.static("public/uploads"));
 
 app.get("/", (req, res) => {
   return res.json({ result: "OK" });
+});
+
+// Health check endpoint
+app.get("/api/health", (req, res) => {
+  return res.json({ 
+    status: "OK", 
+    timestamp: new Date().toISOString(),
+    service: "PsicoWeb Backend"
+  });
+});
+
+// Debug endpoint for authentication testing
+app.get("/api/auth/debug", (req, res) => {
+  const authHeader = req.headers.authorization;
+  return res.json({
+    hasAuthHeader: !!authHeader,
+    authHeaderFormat: authHeader ? authHeader.substring(0, 20) + '...' : null,
+    jwtSecretConfigured: !!process.env.JWT_SECRET,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Debug endpoint to check database data
+app.get("/api/debug/data", authMiddleware, async (req, res) => {
+  try {
+    const { Sesion, Psicologo, Paciente, User } = await import('./src/models/index.js');
+    
+    const userId = req.user.userId || req.user.id;
+    const userRole = req.user.role;
+    
+    // Get user info
+    const user = await User.findByPk(userId);
+    
+    // Get sessions count
+    const allSessions = await Sesion.count();
+    const userSessions = await Sesion.count({
+      where: userRole === 'psicologo' ? { idPsicologo: userId } : { idPaciente: userId }
+    });
+    
+    // Get psychologists count
+    const psychologistsCount = await Psicologo.count();
+    const patientsCount = await Paciente.count();
+    
+    // Check if current user is a psychologist
+    const isPsychologist = await Psicologo.findByPk(userId);
+    const isPatient = await Paciente.findByPk(userId);
+    
+    return res.json({
+      currentUser: {
+        id: userId,
+        role: userRole,
+        email: user?.email,
+        name: user?.name,
+        isPsychologist: !!isPsychologist,
+        isPatient: !!isPatient
+      },
+      databaseStats: {
+        totalSessions: allSessions,
+        userSessions: userSessions,
+        totalPsychologists: psychologistsCount,
+        totalPatients: patientsCount
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Debug endpoint error:', error);
+    return res.status(500).json({ error: error.message });
+  }
 });
 
 // Rutas de la API

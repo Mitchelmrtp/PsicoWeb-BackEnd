@@ -95,8 +95,10 @@ export const register = async (req, res) => {
             // Generate token
             const token = jwt.sign(
                 { 
+                    id: user.id,
                     userId: user.id,
-                    role: user.role
+                    role: user.role,
+                    userType: user.role
                 },
                 process.env.JWT_SECRET,
                 { expiresIn: '24h' }
@@ -109,7 +111,10 @@ export const register = async (req, res) => {
                     id: user.id,
                     name: user.name,
                     email: user.email,
-                    role: user.role
+                    role: user.role,
+                    userType: user.role,
+                    first_name: user.first_name,
+                    last_name: user.last_name
                 }
             });
         } catch (error) {
@@ -143,8 +148,10 @@ export const login = async (req, res) => {
 
         const token = jwt.sign(
             { 
+                id: user.id,
                 userId: user.id,
-                role: user.role
+                role: user.role,
+                userType: user.role
             },
             process.env.JWT_SECRET,
             { expiresIn: '24h' }
@@ -158,6 +165,7 @@ export const login = async (req, res) => {
                 name: user.name,
                 email: user.email,
                 role: user.role,
+                userType: user.role,
                 first_name: user.first_name,
                 last_name: user.last_name,
                 telephone: user.telephone

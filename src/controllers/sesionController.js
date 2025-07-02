@@ -32,6 +32,10 @@ export const findAll = async (req, res) => {
   try {
     const { startDate, endDate, estado } = req.query;
     const where = {};
+    const userId = req.user.userId || req.user.id;
+
+    console.log('Finding sessions for user:', userId, 'with role:', req.user.role);
+    console.log('Query parameters:', { startDate, endDate, estado });
 
     if (startDate && endDate) {
       where.fecha = {
@@ -51,14 +55,30 @@ export const findAll = async (req, res) => {
       where.estado = estado;
     }
 
+    // Filter by user role and ID
     if (req.user.role !== "admin") {
-      const psicologo = await Psicologo.findByPk(req.user.userId);
-      if (psicologo) {
-        where.idPsicologo = req.user.userId;
+      console.log('User role:', req.user.role, 'User ID:', userId);
+      
+      if (req.user.role === "psicologo") {
+        where.idPsicologo = userId;
+        console.log('Filtering for psychologist sessions with ID:', userId);
+      } else if (req.user.role === "paciente") {
+        where.idPaciente = userId;
+        console.log('Filtering for patient sessions with ID:', userId);
       } else {
-        where.idPaciente = req.user.userId;
+        // Fallback: check if user exists as psychologist, otherwise assume patient
+        const psicologo = await Psicologo.findByPk(userId);
+        if (psicologo) {
+          where.idPsicologo = userId;
+          console.log('User found as psychologist, filtering sessions');
+        } else {
+          where.idPaciente = userId;
+          console.log('User not found as psychologist, filtering as patient');
+        }
       }
     }
+
+    console.log('Final where clause:', where);
 
     const sesiones = await Sesion.findAll({
       where,
@@ -90,8 +110,11 @@ export const findAll = async (req, res) => {
       ],
     });
 
+    console.log(`Found ${sesiones.length} sessions for user ${userId}`);
+    
     res.status(200).json(sesiones);
   } catch (error) {
+    console.error('Error in findAll sessions:', error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };

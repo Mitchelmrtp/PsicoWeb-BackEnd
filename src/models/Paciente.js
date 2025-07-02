@@ -21,6 +21,18 @@ const Paciente = sequelize.define('Paciente', {
     },
     motivoConsulta: {
         type: DataTypes.TEXT
+    },
+    diagnostico: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    idPsicologo: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        references: {
+            model: Psicologo,
+            key: 'id'
+        }
     }
 }, {
     tableName: 'paciente',

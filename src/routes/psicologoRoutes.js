@@ -7,7 +7,6 @@ const router = express.Router();
 
 // Public routes (anyone can view psychologist listings)
 router.get('/', PsicologoController.findAll);
-router.get('/:id', PsicologoController.findById);
 
 // Profile management - anyone can create a profile, but needs to be authenticated
 router.post('/profile', authMiddleware, PsicologoController.create);
@@ -15,6 +14,11 @@ router.post('/profile', authMiddleware, PsicologoController.create);
 // Routes requiring psychologist role
 router.put('/profile', authMiddleware, psicologoMiddleware, PsicologoController.update);
 router.delete('/profile', authMiddleware, psicologoMiddleware, PsicologoController.remove);
+
+// Route for getting psychologist's patients (must be before /:id route)
 router.get('/pacientes', authMiddleware, PsicologoController.getPacientes);
+
+// Individual psychologist route (must be after specific routes)
+router.get('/:id', PsicologoController.findById);
 
 export default router;
