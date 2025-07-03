@@ -5,7 +5,7 @@ export class DisponibilidadDTO {
         this.diaSemana = data.diaSemana;
         this.horaInicio = data.horaInicio;
         this.horaFin = data.horaFin;
-        this.activa = data.activa;
+        this.activo = data.activo; // Usar el mismo nombre que en el modelo
         
         // Psicologo data if included
         if (data.Psicologo) {

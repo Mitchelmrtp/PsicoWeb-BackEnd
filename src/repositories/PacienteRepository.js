@@ -80,14 +80,33 @@ export class PacienteRepository extends BaseRepository {
 
   async findByIdSafe(id, options = {}) {
     try {
-      return await this.model.findByPk(id, {
+      // Merge user-specified options with our default options
+      const mergedOptions = {
         include: [{
           model: User,
           attributes: ['name', 'email', 'telephone', 'first_name', 'last_name']
         }],
         ...options
-      });
+      };
+      
+      // If specific attributes are requested, keep them, but don't unnecessarily fetch everything
+      if (!options.attributes) {
+        mergedOptions.attributes = [
+          'id', 'motivoConsulta', 'diagnosticoPreliminar', 
+          'diagnostico', 'idPsicologo', 'fechaRegistro'
+        ];
+      }
+      
+      // Set query timeout
+      return await Promise.race([
+        this.model.findByPk(id, mergedOptions),
+        new Promise((_, reject) => setTimeout(() => 
+          reject(new Error('Query timeout exceeded')), 3000))
+      ]);
     } catch (error) {
+      if (error.message === 'Query timeout exceeded') {
+        throw new Error('Database query timed out, please try again later');
+      }
       throw new Error(`Error finding patient by ID: ${error.message}`);
     }
   }

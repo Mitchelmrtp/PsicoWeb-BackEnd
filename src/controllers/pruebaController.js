@@ -5,18 +5,14 @@ import Joi from 'joi';
 const pruebaService = new PruebaService();
 
 const pruebaSchema = Joi.object({
-    nombre: Joi.string().required(),
+    titulo: Joi.string().required(),
     descripcion: Joi.string().required(),
-    instrucciones: Joi.string().required(),
-    tiempoDuracion: Joi.number().integer().min(1).optional(),
     activa: Joi.boolean().optional()
 });
 
 const preguntaSchema = Joi.object({
-    texto: Joi.string().required(),
-    tipo: Joi.string().valid('LIKERT', 'MULTIPLE_CHOICE', 'OPEN_TEXT').required(),
-    opciones: Joi.array().items(Joi.string()).optional(),
-    orden: Joi.number().integer().min(1).required()
+    enunciado: Joi.string().required(),
+    opciones: Joi.array().items(Joi.string()).required()
 });
 
 const resultadoPruebaSchema = Joi.object({
@@ -24,9 +20,12 @@ const resultadoPruebaSchema = Joi.object({
     idPaciente: Joi.string().required(),
     respuestas: Joi.array().items(Joi.object({
         idPregunta: Joi.string().required(),
-        respuesta: Joi.string().required(),
+        respuesta: Joi.alternatives().try(Joi.string(), Joi.number()).required(),
         puntuacion: Joi.number().optional()
-    })).required()
+    })).required(),
+    interpretacion: Joi.string().optional(),
+    puntuacionTotal: Joi.number().optional(),
+    puntuacionPromedio: Joi.number().optional()
 });
 
 // CRUD for Pruebas
@@ -97,9 +96,24 @@ export const findPreguntasByPrueba = async (req, res) => {
 
 export const createPregunta = async (req, res) => {
     try {
+        console.log('Creating question - params:', req.params);
+        console.log('Creating question - body:', req.body);
+        
+        if (!req.params.id) {
+            return res.status(400).json({ 
+                success: false,
+                message: 'Test ID is required',
+                error: 'Missing test ID parameter'
+            });
+        }
+        
         const { error } = preguntaSchema.validate(req.body);
         if (error) {
-            return res.status(400).json({ message: 'Validation error', details: error.details });
+            return res.status(400).json({ 
+                success: false,
+                message: 'Validation error', 
+                error: error.details[0].message
+            });
         }
 
         const preguntaData = {
@@ -172,15 +186,27 @@ export const findResultadosByPrueba = async (req, res) => {
 
 export const findResultadoById = async (req, res) => {
     try {
-        const result = await pruebaService.getResultadoById(req.params.resultadoId, req.user);
+        console.log('findResultadoById called with id:', req.params.id);
+        console.log('Current user:', req.user);
+        
+        const result = await pruebaService.getResultadoById(req.params.id, req.user);
         handleServiceResponse(res, result);
     } catch (error) {
+        console.error('Error in findResultadoById:', error);
         handleServiceResponse(res, error);
     }
 };
 
 // Alias para compatibilidad con las rutas
-export const getResultadosByPaciente = findResultadosByPaciente;
+export const getResultadosByPaciente = async (req, res) => {
+    try {
+        const pacienteId = req.query.pacienteId; // Get from query param instead of route param
+        const result = await pruebaService.getResultadosByPaciente(pacienteId, req.user);
+        handleServiceResponse(res, result);
+    } catch (error) {
+        handleServiceResponse(res, error);
+    }
+};
 export const updatePreguntaOpciones = updatePregunta;
 export const findPreguntaById = async (req, res) => {
     try {

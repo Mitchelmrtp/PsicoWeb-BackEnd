@@ -57,7 +57,8 @@ export class ResultadoPruebaRepository extends BaseRepository {
             where: { idPaciente: pacienteId },
             include: [{
                 model: Prueba,
-                attributes: ['titulo', 'descripcion']
+                as: 'Prueba',
+                attributes: ['id', 'titulo', 'descripcion']
             }],
             order: [['fechaRealizacion', 'DESC']]
         });
@@ -73,7 +74,7 @@ export class ResultadoPruebaRepository extends BaseRepository {
                     attributes: ['name', 'first_name', 'last_name']
                 }]
             }],
-            order: [['fechaRealizacion', 'DESC']]
+            order: [['createdAt', 'DESC']]
         });
     }
     

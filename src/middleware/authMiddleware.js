@@ -9,6 +9,8 @@ const authMiddleware = (req, res, next) => {
         if (!authHeader) {
             console.log('No authorization header provided');
             return res.status(401).json({ 
+                success: false,
+                statusCode: 401,
                 message: 'No authorization header',
                 error: 'MISSING_AUTH_HEADER'
             });
@@ -18,6 +20,8 @@ const authMiddleware = (req, res, next) => {
         if (!token) {
             console.log('No token in authorization header');
             return res.status(401).json({ 
+                success: false,
+                statusCode: 401,
                 message: 'No token provided',
                 error: 'MISSING_TOKEN'
             });
@@ -28,6 +32,8 @@ const authMiddleware = (req, res, next) => {
         if (!process.env.JWT_SECRET) {
             console.error('JWT_SECRET is not configured');
             return res.status(500).json({ 
+                success: false,
+                statusCode: 500,
                 message: 'Server configuration error',
                 error: 'MISSING_JWT_SECRET'
             });
@@ -35,14 +41,17 @@ const authMiddleware = (req, res, next) => {
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
-        // Ensure both userId and id are available for compatibility
+        console.log('JWT decodificado:', JSON.stringify(decoded));
+        
+        // Ensure userId, id, and role are available for compatibility
         req.user = {
             ...decoded,
             id: decoded.userId || decoded.id,
-            userId: decoded.userId || decoded.id
+            userId: decoded.userId || decoded.id,
+            role: decoded.role || 'paciente'  // Default to 'paciente' if role is not specified
         };
         
-        console.log('Token verified successfully for user:', req.user.id || req.user.userId);
+        console.log('Token verificado para usuario:', JSON.stringify(req.user));
         
         next();
     } catch (error) {
@@ -64,6 +73,8 @@ const authMiddleware = (req, res, next) => {
         }
         
         return res.status(401).json({ 
+            success: false,
+            statusCode: 401,
             message: errorMessage, 
             error: errorCode,
             details: error.message 

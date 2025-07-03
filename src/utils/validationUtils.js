@@ -92,8 +92,16 @@ export class ValidationUtils {
  * Direct utility functions for easy import
  */
 export const validateUUID = (uuid) => {
+  if (!uuid) return false;
+  
+  console.log(`Validando UUID: ${uuid}`);
+  
+  // Expresión regular para validar UUID
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(uuid);
+  const isValid = uuidRegex.test(uuid);
+  
+  console.log(`UUID es válido: ${isValid}`);
+  return isValid;
 };
 
 export const validateEmail = (email) => {

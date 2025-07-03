@@ -2,6 +2,7 @@ import { BaseRepository } from './BaseRepository.js';
 import DisponibilidadPsicologo from '../models/DisponibilidadPsicologo.js';
 import Psicologo from '../models/Psicologo.js';
 import User from '../models/User.js';
+import { Op } from 'sequelize';
 
 export class DisponibilidadRepository extends BaseRepository {
     constructor() {
@@ -19,7 +20,7 @@ export class DisponibilidadRepository extends BaseRepository {
         return await DisponibilidadPsicologo.findAll({
             where: { 
                 idPsicologo: psicologoId,
-                activa: true
+                activo: true
             },
             order: [['diaSemana', 'ASC'], ['horaInicio', 'ASC']]
         });
@@ -42,29 +43,29 @@ export class DisponibilidadRepository extends BaseRepository {
         const whereClause = {
             idPsicologo: psicologoId,
             diaSemana: diaSemana,
-            activa: true,
-            [this.model.sequelize.Op.or]: [
+            activo: true,
+            [Op.or]: [
                 {
                     horaInicio: {
-                        [this.model.sequelize.Op.between]: [horaInicio, horaFin]
+                        [Op.between]: [horaInicio, horaFin]
                     }
                 },
                 {
                     horaFin: {
-                        [this.model.sequelize.Op.between]: [horaInicio, horaFin]
+                        [Op.between]: [horaInicio, horaFin]
                     }
                 },
                 {
-                    [this.model.sequelize.Op.and]: [
-                        { horaInicio: { [this.model.sequelize.Op.lte]: horaInicio } },
-                        { horaFin: { [this.model.sequelize.Op.gte]: horaFin } }
+                    [Op.and]: [
+                        { horaInicio: { [Op.lte]: horaInicio } },
+                        { horaFin: { [Op.gte]: horaFin } }
                     ]
                 }
             ]
         };
         
         if (excludeId) {
-            whereClause.id = { [this.model.sequelize.Op.ne]: excludeId };
+            whereClause.id = { [Op.ne]: excludeId };
         }
         
         return await DisponibilidadPsicologo.findAll({

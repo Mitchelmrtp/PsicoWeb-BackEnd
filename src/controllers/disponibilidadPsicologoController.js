@@ -9,7 +9,7 @@ const disponibilidadSchema = Joi.object({
     diaSemana: Joi.string().valid('LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO', 'DOMINGO').required(),
     horaInicio: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).required(),
     horaFin: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).required(),
-    activa: Joi.boolean().optional()
+    activo: Joi.boolean().optional()
 });
 
 export const findAll = async (req, res) => {

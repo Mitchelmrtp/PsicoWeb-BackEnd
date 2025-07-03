@@ -30,7 +30,23 @@ export class PacienteService {
             }
             
             console.log(`Searching for patient with id: ${id}`);
-            const paciente = await this.pacienteRepository.findByIdSafe(id);
+            
+            // Set timeout for database queries
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Database query timed out')), 5000);
+            });
+            
+            // Limit the included attributes to reduce resource usage
+            const patientPromise = this.pacienteRepository.findByIdSafe(id, {
+                attributes: [
+                    'id', 'motivoConsulta', 'diagnosticoPreliminar', 
+                    'diagnostico', 'idPsicologo', 'fechaRegistro'
+                ]
+            });
+            
+            // Race the promises to prevent hanging
+            const paciente = await Promise.race([patientPromise, timeoutPromise]);
+            
             console.log(`Patient found:`, paciente ? 'Yes' : 'No');
             
             if (!paciente) {
@@ -49,6 +65,9 @@ export class PacienteService {
             return createSuccessResponse(new PacienteDTO(paciente));
         } catch (error) {
             console.error(`Error in getPacienteById:`, error);
+            if (error.message === 'Database query timed out') {
+                throw createErrorResponse('Database query timed out due to resource constraints', 503, error.message);
+            }
             if (error.statusCode) throw error;
             throw createErrorResponse('Error retrieving patient', 500, error.message);
         }
@@ -175,32 +194,84 @@ export class PacienteService {
     
     // Private helper methods
     isAuthorizedToViewPaciente(currentUser, paciente) {
+        console.log('Verificando autorización:');
+        console.log('- Usuario actual:', JSON.stringify({
+            userId: currentUser.userId,
+            role: currentUser.role
+        }));
+        console.log('- Paciente:', JSON.stringify({
+            id: paciente.id,
+            idPsicologo: paciente.idPsicologo
+        }));
+        
         // Admin can view all
-        if (currentUser.role === 'admin') return true;
-        
-        // Patient can view their own record
-        if (currentUser.userId === paciente.id) return true;
-        
-        // Psychologist can view their assigned patients
-        if (currentUser.role === 'psicologo' && paciente.idPsicologo === currentUser.userId) {
+        if (currentUser.role === 'admin') {
+            console.log('- Autorizado: El usuario es admin');
             return true;
         }
         
+        // Patient can view their own record (comparación de strings)
+        const currentUserId = String(currentUser.userId || currentUser.id || '');
+        const pacienteId = String(paciente.id || '');
+        
+        if (currentUserId === pacienteId) {
+            console.log('- Autorizado: El paciente está viendo su propio perfil');
+            return true;
+        }
+        
+        // Psychologist can view their assigned patients
+        if (currentUser.role === 'psicologo') {
+            const psicologoId = String(currentUser.userId || currentUser.id || '');
+            const pacientePsicologoId = String(paciente.idPsicologo || '');
+            
+            if (psicologoId && pacientePsicologoId && psicologoId === pacientePsicologoId) {
+                console.log('- Autorizado: El psicólogo tiene asignado a este paciente');
+                return true;
+            }
+        }
+        
+        console.log('- No autorizado: No cumple ninguna condición de acceso');
         return false;
     }
     
     isAuthorizedToModifyPaciente(currentUser, paciente) {
+        console.log('Verificando autorización para modificar:');
+        console.log('- Usuario actual:', JSON.stringify({
+            userId: currentUser.userId,
+            role: currentUser.role
+        }));
+        console.log('- Paciente:', JSON.stringify({
+            id: paciente.id,
+            idPsicologo: paciente.idPsicologo
+        }));
+        
         // Admin can modify all
-        if (currentUser.role === 'admin') return true;
-        
-        // Patient can modify their own record (limited fields)
-        if (currentUser.userId === paciente.id) return true;
-        
-        // Psychologist can modify their assigned patients
-        if (currentUser.role === 'psicologo' && paciente.idPsicologo === currentUser.userId) {
+        if (currentUser.role === 'admin') {
+            console.log('- Autorizado: El usuario es admin');
             return true;
         }
         
+        // Patient can modify their own record (limited fields)
+        const currentUserId = String(currentUser.userId || currentUser.id || '');
+        const pacienteId = String(paciente.id || '');
+        
+        if (currentUserId === pacienteId) {
+            console.log('- Autorizado: El paciente está modificando su propio perfil');
+            return true;
+        }
+        
+        // Psychologist can modify their assigned patients
+        if (currentUser.role === 'psicologo') {
+            const psicologoId = String(currentUser.userId || currentUser.id || '');
+            const pacientePsicologoId = String(paciente.idPsicologo || '');
+            
+            if (psicologoId && pacientePsicologoId && psicologoId === pacientePsicologoId) {
+                console.log('- Autorizado: El psicólogo tiene asignado a este paciente');
+                return true;
+            }
+        }
+        
+        console.log('- No autorizado: No cumple ninguna condición de acceso');
         return false;
     }
 }

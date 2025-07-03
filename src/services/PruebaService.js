@@ -52,7 +52,7 @@ export class PruebaService {
                 throw createErrorResponse('Access denied - Psychologist or Admin required', 403);
             }
             
-            // Create the test
+            // Create the test - only include fields that exist in the database
             const prueba = await this.pruebaRepository.create({
                 titulo: pruebaData.titulo,
                 descripcion: pruebaData.descripcion,
@@ -161,65 +161,61 @@ export class PruebaService {
     }
     
     async submitTestResult(resultData, currentUser) {
+        const transaction = await sequelize.transaction();
+        
         try {
-            const { idPrueba, idPaciente, respuestas } = resultData;
+            const { idPrueba, idPaciente, respuestas, interpretacion, puntuacionTotal, puntuacionPromedio } = resultData;
             
+            // Validaciones
             if (!validateUUID(idPrueba) || !validateUUID(idPaciente)) {
-                throw createErrorResponse('Invalid test or patient ID format', 400);
+                throw createErrorResponse('ID inválido de prueba o paciente', 400);
             }
             
-            // Verify test exists
+            if (!Array.isArray(respuestas) || respuestas.length === 0) {
+                throw createErrorResponse('Las respuestas son requeridas', 400);
+            }
+            
+            // Verificar que la prueba existe
             const prueba = await this.pruebaRepository.findByIdWithPreguntas(idPrueba);
             if (!prueba) {
-                throw createErrorResponse('Test not found', 404);
+                throw createErrorResponse('Prueba no encontrada', 404);
             }
             
-            // Verify patient exists and authorization
+            // Verificar que el paciente existe
             const paciente = await this.pacienteRepository.findById(idPaciente);
             if (!paciente) {
-                throw createErrorResponse('Patient not found', 404);
+                throw createErrorResponse('Paciente no encontrado', 404);
             }
             
-            // Authorization check
-            if (!this.isAuthorizedToSubmitTest(currentUser, paciente)) {
-                throw createErrorResponse('Access denied', 403);
+            // Validar autorización
+            if (currentUser.role === 'paciente' && currentUser.userId !== idPaciente) {
+                throw createErrorResponse('No autorizado', 403);
             }
             
-            // Check if patient already has a result for this test
-            const existingResult = await this.resultadoRepository.findByPacienteAndPrueba(idPaciente, idPrueba);
-            if (existingResult) {
-                throw createErrorResponse('Patient has already completed this test', 409);
-            }
-            
-            // Calculate scores
-            const { puntuacionTotal, puntuacionPromedio } = this.calculateTestScores(respuestas, prueba.Preguntas);
-            
-            // Generate interpretation (simplified logic)
-            const interpretacion = this.generateInterpretation(puntuacionPromedio);
-            
-            // Save result
+            // Crear el resultado con el campo resultado como JSON string
             const resultado = await this.resultadoRepository.create({
                 idPrueba,
                 idPaciente,
-                resultado: JSON.stringify(respuestas),
+                resultado: JSON.stringify(respuestas),  // Convertir respuestas a string
+                respuestas,  // Este campo se usa para el DTO pero no se guarda
                 interpretacion,
                 puntuacionTotal,
-                puntuacionPromedio,
-                fechaRealizacion: new Date()
-            });
+                puntuacionPromedio
+            }, transaction);
             
-            const resultadoCompleto = await this.resultadoRepository.findById(resultado.id);
+            await transaction.commit();
             
-            return createSuccessResponse(new ResultadoPruebaDTO(resultadoCompleto), 201);
+            return createSuccessResponse(resultado, 201);
         } catch (error) {
+            await transaction.rollback();
             if (error.statusCode) throw error;
-            throw createErrorResponse('Error submitting test result', 500, error.message);
+            throw createErrorResponse('Error al guardar el resultado', 500, error.message);
         }
     }
     
     async getResultadosByPaciente(pacienteId, currentUser) {
         try {
-            if (!validateUUID(pacienteId)) {
+            if (!pacienteId || !validateUUID(pacienteId)) {
                 throw createErrorResponse('Invalid patient ID format', 400);
             }
             
@@ -235,7 +231,13 @@ export class PruebaService {
             
             const resultados = await this.resultadoRepository.findByPacienteId(pacienteId);
             
-            return createSuccessResponse(ResultadoPruebaDTO.fromArray(resultados));
+            console.log('Raw resultados from repository:', JSON.stringify(resultados, null, 2));
+            
+            const resultadosDTO = ResultadoPruebaDTO.fromArray(resultados);
+            
+            console.log('Resultados DTO:', JSON.stringify(resultadosDTO, null, 2));
+            
+            return createSuccessResponse(resultadosDTO);
         } catch (error) {
             if (error.statusCode) throw error;
             throw createErrorResponse('Error retrieving test results', 500, error.message);
@@ -259,6 +261,33 @@ export class PruebaService {
         } catch (error) {
             if (error.statusCode) throw error;
             throw createErrorResponse('Error retrieving test results', 500, error.message);
+        }
+    }
+    
+    async createPregunta(preguntaData, currentUser) {
+        try {
+            // Authorization check (only psychologists and admins can create questions)
+            if (!['psicologo', 'admin'].includes(currentUser.role)) {
+                throw createErrorResponse('Access denied - Psychologist or Admin required', 403);
+            }
+            
+            // Verify that the test exists
+            const prueba = await this.pruebaRepository.findById(preguntaData.idPrueba);
+            if (!prueba) {
+                throw createErrorResponse('Test not found', 404);
+            }
+            
+            // Create the question
+            const pregunta = await this.preguntaRepository.create({
+                idPrueba: preguntaData.idPrueba,
+                enunciado: preguntaData.enunciado,
+                opciones: preguntaData.opciones
+            });
+            
+            return createSuccessResponse(new PreguntaDTO(pregunta), 201);
+        } catch (error) {
+            if (error.statusCode) throw error;
+            throw createErrorResponse('Error creating question', 500, error.message);
         }
     }
     
@@ -312,6 +341,93 @@ export class PruebaService {
         }
     }
 
+    async getResultadoById(resultadoId, currentUser) {
+        try {
+            if (!validateUUID(resultadoId)) {
+                throw createErrorResponse('ID de resultado inválido', 400);
+            }
+            
+            const resultado = await this.resultadoRepository.model.findOne({
+                where: { id: resultadoId },
+                include: [{
+                    model: this.pruebaRepository.model,
+                    as: 'Prueba',
+                    include: [{
+                        model: this.preguntaRepository.model,
+                        as: 'Preguntas'
+                    }]
+                }]
+            });
+            
+            if (!resultado) {
+                throw createErrorResponse('Resultado no encontrado', 404);
+            }
+            
+            // Verificación de autorización
+            if (currentUser.role === 'paciente') {
+                if (currentUser.userId !== resultado.idPaciente) {
+                    throw createErrorResponse('No autorizado', 403);
+                }
+            } else if (currentUser.role === 'psicologo') {
+                const paciente = await this.pacienteRepository.findById(resultado.idPaciente);
+                if (!paciente || paciente.idPsicologo !== currentUser.userId) {
+                    throw createErrorResponse('No autorizado', 403);
+                }
+            } else if (currentUser.role !== 'admin') {
+                throw createErrorResponse('No autorizado', 403);
+            }
+
+            // Parsear el campo resultado que está como string
+            let respuestasParsed = [];
+            try {
+                if (resultado.resultado) {
+                    respuestasParsed = JSON.parse(resultado.resultado);
+                }
+            } catch (e) {
+                console.error('Error parsing resultado:', e);
+                respuestasParsed = [];
+            }
+
+            // Emparejar las respuestas con las preguntas
+            const respuestasCompletas = [];
+            if (resultado.Prueba?.Preguntas && Array.isArray(respuestasParsed)) {
+                respuestasParsed.forEach((resp, index) => {
+                    const pregunta = resultado.Prueba.Preguntas.find(p => p.id === resp.idPregunta);
+                    if (pregunta) {
+                        const respuestaCompleta = {
+                            idPregunta: resp.idPregunta,
+                            pregunta: pregunta.enunciado,
+                            respuesta: resp.respuesta,
+                            opciones: pregunta.opciones,
+                            puntuacion: resp.puntuacion || 0
+                        };
+                        respuestasCompletas.push(respuestaCompleta);
+                    } else {
+                        // Si no se encuentra la pregunta, agregar respuesta sin detalles
+                        respuestasCompletas.push({
+                            idPregunta: resp.idPregunta,
+                            pregunta: `Pregunta ${index + 1}`,
+                            respuesta: resp.respuesta,
+                            opciones: [],
+                            puntuacion: resp.puntuacion || 0
+                        });
+                    }
+                });
+            }
+            
+            // Añadir las respuestas completas al resultado
+            const resultadoFinal = {
+                ...resultado.toJSON(),
+                respuestas: respuestasCompletas
+            };
+            
+            return createSuccessResponse(resultadoFinal);
+        } catch (error) {
+            if (error.statusCode) throw error;
+            throw createErrorResponse('Error al obtener el resultado', 500, error.message);
+        }
+    }
+
     isAuthorizedToSubmitTest(currentUser, paciente) {
         // Patient can submit their own tests
         if (currentUser.userId === paciente.id) return true;
@@ -340,5 +456,10 @@ export class PruebaService {
         if (currentUser.role === 'admin') return true;
         
         return false;
+    }
+
+    async createResultadoPrueba(resultData, currentUser) {
+        // This is an alias for submitTestResult
+        return await this.submitTestResult(resultData, currentUser);
     }
 }

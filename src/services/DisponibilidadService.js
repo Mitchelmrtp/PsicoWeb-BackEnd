@@ -55,19 +55,26 @@ export class DisponibilidadService {
     
     async createDisponibilidad(disponibilidadData, currentUser) {
         try {
-            const { idPsicologo, diaSemana, horaInicio, horaFin } = disponibilidadData;
+            // Usar el ID del psicólogo del cuerpo o del token si no viene en el cuerpo
+            let psicologoId = disponibilidadData.idPsicologo || currentUser?.userId;
             
-            if (!validateUUID(idPsicologo)) {
+            const { diaSemana, horaInicio, horaFin } = disponibilidadData;
+            
+            if (!psicologoId) {
+                throw createErrorResponse('Psychologist ID is required', 400);
+            }
+
+            if (!validateUUID(psicologoId)) {
                 throw createErrorResponse('Invalid psychologist ID format', 400);
             }
             
             // Authorization check
-            if (!this.isAuthorizedToModifyDisponibilidad(currentUser, idPsicologo)) {
+            if (!this.isAuthorizedToModifyDisponibilidad(currentUser, psicologoId)) {
                 throw createErrorResponse('Access denied', 403);
             }
             
             // Verify psychologist exists
-            const psicologo = await this.psicologoRepository.findById(idPsicologo);
+            const psicologo = await this.psicologoRepository.findById(psicologoId);
             if (!psicologo) {
                 throw createErrorResponse('Psychologist not found', 404);
             }
@@ -79,7 +86,7 @@ export class DisponibilidadService {
             
             // Check for conflicting schedules
             const conflictingSchedules = await this.disponibilidadRepository.findConflictingSchedule(
-                idPsicologo, diaSemana, horaInicio, horaFin
+                psicologoId, diaSemana, horaInicio, horaFin
             );
             
             if (conflictingSchedules.length > 0) {
@@ -87,15 +94,16 @@ export class DisponibilidadService {
             }
             
             const disponibilidad = await this.disponibilidadRepository.create({
-                idPsicologo,
+                idPsicologo: psicologoId,
                 diaSemana,
                 horaInicio,
                 horaFin,
-                activa: disponibilidadData.activa !== undefined ? disponibilidadData.activa : true
+                activo: disponibilidadData.activo !== undefined ? disponibilidadData.activo : true
             });
             
             return createSuccessResponse(new DisponibilidadDTO(disponibilidad), 201);
         } catch (error) {
+            console.error('Error detallado en createDisponibilidad:', error);
             if (error.statusCode) throw error;
             throw createErrorResponse('Error creating availability', 500, error.message);
         }
@@ -186,7 +194,7 @@ export class DisponibilidadService {
                 throw createErrorResponse('Access denied', 403);
             }
             
-            await this.disponibilidadRepository.update(id, { activa: !disponibilidad.activa });
+            await this.disponibilidadRepository.update(id, { activo: !disponibilidad.activo });
             const updatedDisponibilidad = await this.disponibilidadRepository.findById(id);
             
             return createSuccessResponse(new DisponibilidadDTO(updatedDisponibilidad));
@@ -212,23 +220,47 @@ export class DisponibilidadService {
     }
     
     isAuthorizedToModifyDisponibilidad(currentUser, psicologoId) {
+        console.log('Verificando autorización:');
+        console.log('- currentUser:', currentUser ? JSON.stringify(currentUser) : 'undefined');
+        console.log('- psicologoId:', psicologoId);
+        
+        // Verificar si currentUser está definido
+        if (!currentUser) {
+            console.log('No hay usuario autenticado');
+            return false;
+        }
+        
         // Psychologist can modify their own availability
         if (currentUser.role === 'psicologo' && currentUser.userId === psicologoId) {
+            console.log('Es el mismo psicólogo: autorizado');
             return true;
         }
         
         // Admin can modify all availabilities
         if (currentUser.role === 'admin') {
+            console.log('Es admin: autorizado');
             return true;
         }
         
+        console.log('No autorizado');
         return false;
     }
     
     isValidTimeRange(horaInicio, horaFin) {
-        const inicio = new Date(`1970-01-01T${horaInicio}`);
-        const fin = new Date(`1970-01-01T${horaFin}`);
+        console.log(`Validando rango de horas: ${horaInicio} - ${horaFin}`);
         
-        return fin > inicio;
+        try {
+            const inicio = new Date(`1970-01-01T${horaInicio}`);
+            const fin = new Date(`1970-01-01T${horaFin}`);
+            
+            console.log(`Horas convertidas a objetos Date: ${inicio.toISOString()} - ${fin.toISOString()}`);
+            const esValido = fin > inicio;
+            console.log(`El rango es válido: ${esValido}`);
+            
+            return esValido;
+        } catch (error) {
+            console.error(`Error al validar rango de horas: ${error.message}`);
+            return false;
+        }
     }
 }

@@ -8,7 +8,9 @@ export class PruebaDTO {
         
         // Preguntas if included
         if (data.Preguntas) {
-            this.preguntas = data.Preguntas.map(pregunta => new PreguntaDTO(pregunta));
+            // Keep both formats for backward compatibility
+            this.Preguntas = data.Preguntas.map(pregunta => new PreguntaDTO(pregunta));
+            this.preguntas = this.Preguntas; // Reference to the same array
         }
     }
     
@@ -42,20 +44,25 @@ export class ResultadoPruebaDTO {
         this.puntuacionPromedio = data.puntuacionPromedio;
         this.fechaRealizacion = data.fechaRealizacion;
         
-        // Related data if included
+        // Related data if included - mantener estructura original con mayúscula
         if (data.Prueba) {
-            this.prueba = new PruebaDTO(data.Prueba);
+            this.Prueba = new PruebaDTO(data.Prueba);
         }
         
         if (data.Paciente) {
-            this.paciente = {
+            this.Paciente = {
                 id: data.Paciente.id,
-                user: data.Paciente.User ? {
+                User: data.Paciente.User ? {
                     name: data.Paciente.User.name,
                     first_name: data.Paciente.User.first_name,
                     last_name: data.Paciente.User.last_name
                 } : undefined
             };
+        }
+        
+        // Mantener también la versión en minúscula para retrocompatibilidad
+        if (data.Prueba) {
+            this.prueba = this.Prueba;
         }
     }
     
