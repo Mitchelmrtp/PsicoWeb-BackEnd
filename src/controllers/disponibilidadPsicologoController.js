@@ -1,185 +1,102 @@
-import DisponibilidadPsicologo from '../models/DisponibilidadPsicologo.js';
-import Psicologo from '../models/Psicologo.js';
+import { DisponibilidadService } from '../services/DisponibilidadService.js';
+import { handleServiceResponse } from '../utils/responseUtils.js';
 import Joi from 'joi';
-import { Op } from 'sequelize';
+
+const disponibilidadService = new DisponibilidadService();
 
 const disponibilidadSchema = Joi.object({
+    idPsicologo: Joi.string().optional(),
     diaSemana: Joi.string().valid('LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO', 'DOMINGO').required(),
     horaInicio: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).required(),
     horaFin: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).required(),
-    activo: Joi.boolean().optional()
+    activa: Joi.boolean().optional()
 });
+
+export const findAll = async (req, res) => {
+    try {
+        const result = await disponibilidadService.getAllDisponibilidades();
+        handleServiceResponse(res, result);
+    } catch (error) {
+        handleServiceResponse(res, error);
+    }
+};
 
 export const findAllByPsicologo = async (req, res) => {
     try {
-        const disponibilidades = await DisponibilidadPsicologo.findAll({
-            where: {
-                idPsicologo: req.user.userId
-            },
-            order: [
-                ['diaSemana', 'ASC'],
-                ['horaInicio', 'ASC']
-            ]
-        });
-        
-        res.status(200).json(disponibilidades);
+        const psicologoId = req.params.psicologoId || req.user.userId;
+        const result = await disponibilidadService.getDisponibilidadesByPsicologo(psicologoId, req.user);
+        handleServiceResponse(res, result);
     } catch (error) {
-        res.status(500).json({ message: 'Error del servidor', error: error.message });
+        handleServiceResponse(res, error);
     }
 };
 
 export const findByPsicologoId = async (req, res) => {
     try {
-        const psicologoId = req.params.id;
-        
-        // Verificar que el psicólogo existe
-        const psicologo = await Psicologo.findByPk(psicologoId);
-        if (!psicologo) {
-            return res.status(404).json({ message: 'Psicólogo no encontrado' });
-        }
-        
-        const disponibilidades = await DisponibilidadPsicologo.findAll({
-            where: {
-                idPsicologo: psicologoId,
-                activo: true
-            },
-            order: [
-                ['diaSemana', 'ASC'],
-                ['horaInicio', 'ASC']
-            ]
-        });
-        
-        res.status(200).json(disponibilidades);
+        const result = await disponibilidadService.getDisponibilidadesActivasByPsicologo(req.params.id);
+        handleServiceResponse(res, result);
     } catch (error) {
-        res.status(500).json({ message: 'Error del servidor', error: error.message });
+        handleServiceResponse(res, error);
     }
 };
 
 export const create = async (req, res) => {
-    const { error } = disponibilidadSchema.validate(req.body);
-    if (error) {
-        return res.status(400).json({ message: 'Error de validación', error: error.details });
-    }
-
     try {
-        // Verificar que el usuario sea psicólogo
-        const psicologo = await Psicologo.findByPk(req.user.userId);
-        if (!psicologo) {
-            return res.status(403).json({ message: 'Solo los psicólogos pueden crear disponibilidades' });
+        const { error } = disponibilidadSchema.validate(req.body);
+        if (error) {
+            return res.status(400).json({ message: 'Validation error', details: error.details });
         }
 
-        // Verificar si ya existe una disponibilidad con el mismo día y horario superpuesto
-        const { diaSemana, horaInicio, horaFin } = req.body;
-        const disponibilidadesExistentes = await DisponibilidadPsicologo.findAll({
-            where: {
-                idPsicologo: req.user.userId,
-                diaSemana: diaSemana
-            }
-        });
-
-        // Validar superposición de horarios
-        for (const disp of disponibilidadesExistentes) {
-            if (
-                (horaInicio >= disp.horaInicio && horaInicio < disp.horaFin) ||
-                (horaFin > disp.horaInicio && horaFin <= disp.horaFin) ||
-                (horaInicio <= disp.horaInicio && horaFin >= disp.horaFin)
-            ) {
-                return res.status(400).json({ 
-                    message: 'La disponibilidad se superpone con otra ya existente' 
-                });
-            }
-        }
-        
-        // Crear la disponibilidad
-        const disponibilidad = await DisponibilidadPsicologo.create({
+        const disponibilidadData = {
             idPsicologo: req.user.userId,
             ...req.body
-        });
-        
-        res.status(201).json(disponibilidad);
+        };
+
+        const result = await disponibilidadService.createDisponibilidad(disponibilidadData, req.user);
+        handleServiceResponse(res, result);
     } catch (error) {
-        res.status(500).json({ message: 'Error del servidor', error: error.message });
+        handleServiceResponse(res, error);
     }
 };
 
 export const update = async (req, res) => {
-    const { error } = disponibilidadSchema.validate(req.body);
-    if (error) {
-        return res.status(400).json({ message: 'Error de validación', error: error.details });
-    }
-
     try {
-        const disponibilidad = await DisponibilidadPsicologo.findOne({
-            where: {
-                id: req.params.id,
-                idPsicologo: req.user.userId
-            }
-        });
-        
-        if (!disponibilidad) {
-            return res.status(404).json({ message: 'Disponibilidad no encontrada' });
+        const { error } = disponibilidadSchema.validate(req.body, { allowUnknown: true });
+        if (error) {
+            return res.status(400).json({ message: 'Validation error', details: error.details });
         }
 
-        // Verificar superposición con otras disponibilidades
-        if (req.body.diaSemana || req.body.horaInicio || req.body.horaFin) {
-            const diaSemana = req.body.diaSemana || disponibilidad.diaSemana;
-            const horaInicio = req.body.horaInicio || disponibilidad.horaInicio;
-            const horaFin = req.body.horaFin || disponibilidad.horaFin;
-
-            const disponibilidadesExistentes = await DisponibilidadPsicologo.findAll({
-                where: {
-                    id: { [Op.ne]: req.params.id }, // excluir la disponibilidad actual
-                    idPsicologo: req.user.userId,
-                    diaSemana: diaSemana
-                }
-            });
-
-            for (const disp of disponibilidadesExistentes) {
-                if (
-                    (horaInicio >= disp.horaInicio && horaInicio < disp.horaFin) ||
-                    (horaFin > disp.horaInicio && horaFin <= disp.horaFin) ||
-                    (horaInicio <= disp.horaInicio && horaFin >= disp.horaFin)
-                ) {
-                    return res.status(400).json({ 
-                        message: 'La disponibilidad se superpone con otra ya existente' 
-                    });
-                }
-            }
-        }
-        
-        await disponibilidad.update(req.body);
-        
-        res.status(200).json(disponibilidad);
+        const result = await disponibilidadService.updateDisponibilidad(req.params.id, req.body, req.user);
+        handleServiceResponse(res, result);
     } catch (error) {
-        res.status(500).json({ message: 'Error del servidor', error: error.message });
+        handleServiceResponse(res, error);
     }
 };
 
 export const remove = async (req, res) => {
     try {
-        const disponibilidad = await DisponibilidadPsicologo.findOne({
-            where: {
-                id: req.params.id,
-                idPsicologo: req.user.userId
-            }
-        });
-        
-        if (!disponibilidad) {
-            return res.status(404).json({ message: 'Disponibilidad no encontrada' });
-        }
-        
-        await disponibilidad.destroy();
-        
-        res.status(200).json({ message: 'Disponibilidad eliminada correctamente' });
+        const result = await disponibilidadService.deleteDisponibilidad(req.params.id, req.user);
+        handleServiceResponse(res, result);
     } catch (error) {
-        res.status(500).json({ message: 'Error del servidor', error: error.message });
+        handleServiceResponse(res, error);
+    }
+};
+
+export const toggle = async (req, res) => {
+    try {
+        const result = await disponibilidadService.toggleDisponibilidad(req.params.id, req.user);
+        handleServiceResponse(res, result);
+    } catch (error) {
+        handleServiceResponse(res, error);
     }
 };
 
 export default {
+    findAll,
     findAllByPsicologo,
     findByPsicologoId,
     create,
     update,
-    remove
+    remove,
+    toggle
 };

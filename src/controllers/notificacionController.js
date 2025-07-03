@@ -1,42 +1,83 @@
-import Notificacion from "../models/Notificacion.js";
+import { NotificacionService } from '../services/CalendarioService.js';
+import { handleServiceResponse } from '../utils/responseUtils.js';
+import Joi from 'joi';
+
+const notificacionService = new NotificacionService();
+
+const notificacionSchema = Joi.object({
+    mensaje: Joi.string().required(),
+    tipo: Joi.string().required(),
+    idUsuario: Joi.string().required()
+});
+
+export const getNotificacionesByUser = async (req, res) => {
+    try {
+        const usuarioId = req.params.usuarioId || req.user.userId;
+        const result = await notificacionService.getNotificacionesByUsuario(usuarioId, req.user);
+        handleServiceResponse(res, result);
+    } catch (error) {
+        handleServiceResponse(res, error);
+    }
+};
 
 export const getNotificacionesNoLeidas = async (req, res) => {
-  try {
-    const notificaciones = await Notificacion.findAll({
-      where: {
-        idUsuario: req.user.userId,
-        leido: false,
-      },
-      order: [["fecha_creacion", "DESC"]],
-    });
+    try {
+        const usuarioId = req.params.usuarioId || req.user.userId;
+        const result = await notificacionService.getNotificacionesNoLeidas(usuarioId, req.user);
+        handleServiceResponse(res, result);
+    } catch (error) {
+        handleServiceResponse(res, error);
+    }
+};
 
-    res.status(200).json(notificaciones);
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
+export const create = async (req, res) => {
+    try {
+        const { error } = notificacionSchema.validate(req.body);
+        if (error) {
+            return res.status(400).json({ message: 'Validation error', details: error.details });
+        }
+
+        const result = await notificacionService.createNotificacion(req.body);
+        handleServiceResponse(res, result);
+    } catch (error) {
+        handleServiceResponse(res, error);
+    }
 };
 
 export const marcarComoLeida = async (req, res) => {
-  try {
-    const notificacion = await Notificacion.findByPk(req.params.id);
-
-    if (!notificacion) {
-      return res.status(404).json({ message: "Notificación no encontrada" });
+    try {
+        const result = await notificacionService.markAsRead(req.params.id, req.user);
+        handleServiceResponse(res, result);
+    } catch (error) {
+        handleServiceResponse(res, error);
     }
+};
 
-    if (
-      notificacion.idUsuario !== req.user.userId &&
-      req.user.role !== "admin"
-    ) {
-      return res
-        .status(403)
-        .json({ message: "No autorizado para modificar esta notificación" });
+export const marcarTodasComoLeidas = async (req, res) => {
+    try {
+        const usuarioId = req.params.usuarioId || req.user.userId;
+        const result = await notificacionService.markAllAsRead(usuarioId, req.user);
+        handleServiceResponse(res, result);
+    } catch (error) {
+        handleServiceResponse(res, error);
     }
+};
 
-    await notificacion.update({ leido: true });
+export const getUnreadCount = async (req, res) => {
+    try {
+        const usuarioId = req.params.usuarioId || req.user.userId;
+        const result = await notificacionService.getUnreadCount(usuarioId, req.user);
+        handleServiceResponse(res, result);
+    } catch (error) {
+        handleServiceResponse(res, error);
+    }
+};
 
-    res.status(200).json({ message: "Notificación marcada como leída" });
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
+export default {
+    getNotificacionesByUser,
+    getNotificacionesNoLeidas,
+    create,
+    marcarComoLeida,
+    marcarTodasComoLeidas,
+    getUnreadCount
 };
