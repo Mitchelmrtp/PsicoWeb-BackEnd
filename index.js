@@ -12,12 +12,9 @@ async function startServer() {
     await sequelize.sync();
     console.log('✅ Modelos sincronizados con la base de datos.');
 
-    app.listen(3005);
-
-
-    /*app.listen(PORT, () => {
-      console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
-    });*/
+    app.listen(3005, () => {
+      console.log('🚀 Servidor corriendo en http://localhost:3005');
+    });
 
   } catch (error) {
     console.error('❌ Error al iniciar el servidor:', error);
