@@ -160,4 +160,63 @@ export class PsicologoService {
       return createErrorResponse('Error al obtener pacientes', 500);
     }
   }
+
+  async getPacientesByPsicologoId(psicologoId) {
+    try {
+      console.log(`Getting patients for psychologist ID: ${psicologoId}`);
+      
+      if (!validateUUID(psicologoId)) {
+        console.error(`Invalid psychologist ID format: ${psicologoId}`);
+        return createErrorResponse('Invalid psychologist ID format', 400);
+      }
+
+      // Verificar que el psicólogo existe
+      const psicologo = await this.psicologoRepository.findById(psicologoId);
+      if (!psicologo) {
+        console.error(`Psychologist not found with ID: ${psicologoId}`);
+        return createErrorResponse('Psychologist not found', 404);
+      }
+      
+      console.log(`Found psychologist: ${psicologo.id}`);
+
+      // Obtener pacientes del psicólogo
+      const pacientes = await this.psicologoRepository.findPacientesByPsicologoId(psicologoId);
+      console.log(`Found ${pacientes.length} patients for psychologist ${psicologoId}`);
+      
+      // Convertir a DTO si es necesario (podemos crear un PacienteResponseDTO específico o usar un formato genérico)
+      const pacientesResponse = pacientes.map(paciente => {
+        // Asegurar que tenemos datos necesarios
+        if (!paciente) {
+          console.warn('Found null patient in results');
+          return null;
+        }
+        
+        return {
+          id: paciente.id,
+          diagnosticoPreliminar: paciente.diagnosticoPreliminar || '',
+          motivoConsulta: paciente.motivoConsulta || '',
+          diagnostico: paciente.diagnostico || '',
+          user: paciente.User ? {
+            name: paciente.User.name || '',
+            email: paciente.User.email || '',
+            telephone: paciente.User.telephone || '',
+            first_name: paciente.User.first_name || '',
+            last_name: paciente.User.last_name || ''
+          } : { 
+            name: 'Usuario', 
+            email: 'sin@email.com',
+            telephone: '',
+            first_name: 'Paciente',
+            last_name: 'Sin Nombre'
+          }
+        };
+      }).filter(p => p !== null); // Filtrar pacientes nulos
+
+      console.log(`Returning ${pacientesResponse.length} formatted patients`);
+      return createSuccessResponse(pacientesResponse);
+    } catch (error) {
+      console.error('Error in PsicologoService.getPacientesByPsicologoId:', error);
+      return createErrorResponse(`Error getting patients for psychologist: ${error.message}`, 500);
+    }
+  }
 }

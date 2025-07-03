@@ -9,16 +9,56 @@ import sesionRoutes from "./src/routes/sesionRoutes.js";
 import pruebaRoutes from "./src/routes/pruebaRoutes.js";
 import disponibilidadPsicologoRoutes from "./src/routes/disponibilidadPsicologoRoutes.js";
 import notificationRoutes from "./src/routes/notificationRoutes.js";
+import chatRoutes from "./src/routes/chatRoutes.js";
 
 const app = express();
 
-// Better CORS configuration
+// Enhanced CORS configuration
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: function(origin, callback) {
+    // Allow any origin in development
+    const allowedOrigins = [
+      process.env.FRONTEND_URL || 'http://localhost:3000',
+      'http://localhost:5173', // Vite dev server default
+      'http://localhost:4173',  // Vite preview default
+      'http://127.0.0.1:5173',
+      'http://127.0.0.1:4173'
+    ];
+    
+    // Allow requests with no origin (like mobile apps, curl, postman)
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      console.log(`CORS: Allowing origin: ${origin || 'No origin'}`);
+      callback(null, true);
+    } else {
+      console.warn(`CORS: Blocked origin: ${origin}`);
+      callback(null, false);
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
+// Log requests middleware for debugging
+app.use((req, res, next) => {
+  const start = Date.now();
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  
+  // Log auth headers (partially)
+  if (req.headers.authorization) {
+    const authPreview = req.headers.authorization.substring(0, 15) + '...';
+    console.log(`Auth header present: ${authPreview}`);
+  } else {
+    console.log(`No auth header present`);
+  }
+  
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms`);
+  });
+  
+  next();
+});
 
 app.use(express.json());
 
@@ -105,6 +145,7 @@ app.use("/api/sesiones", sesionRoutes);
 app.use("/api/pruebas", pruebaRoutes);
 app.use("/api/disponibilidad", disponibilidadPsicologoRoutes);
 app.use("/api/notificaciones", notificationRoutes);
+app.use("/api/chat", chatRoutes);
 
 app.use((err, req, res, next) => {
   if (err.code === "LIMIT_FILE_TYPES") {

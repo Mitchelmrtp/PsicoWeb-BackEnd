@@ -18,6 +18,9 @@ router.delete('/profile', authMiddleware, psicologoMiddleware, PsicologoControll
 // Route for getting psychologist's patients (must be before /:id route)
 router.get('/pacientes', authMiddleware, PsicologoController.getPacientes);
 
+// Route for getting a specific psychologist's patients
+router.get('/:id/pacientes', PsicologoController.getPacientesByPsicologoId);
+
 // Individual psychologist route (must be after specific routes)
 router.get('/:id', PsicologoController.findById);
 

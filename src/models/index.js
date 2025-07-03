@@ -9,6 +9,8 @@ import Prueba from './Prueba.js';
 import Pregunta from './Pregunta.js';
 import ResultadoPrueba from './ResultadoPrueba.js';
 import DisponibilidadPsicologo from './DisponibilidadPsicologo.js';
+import Chat from './Chat.js';
+import Mensaje from './Mensaje.js';
 
 // Define associations between models
 
@@ -123,6 +125,70 @@ DisponibilidadPsicologo.belongsTo(Psicologo, {
   onDelete: 'CASCADE'
 });
 
+// Chat relationships
+Psicologo.hasMany(Chat, { 
+  foreignKey: 'idPsicologo',
+  as: 'chatsPsicologo',
+  onDelete: 'CASCADE'
+});
+Chat.belongsTo(Psicologo, { 
+  foreignKey: 'idPsicologo',
+  as: 'psicologo',
+  onDelete: 'CASCADE'
+});
+
+Paciente.hasMany(Chat, { 
+  foreignKey: 'idPaciente',
+  as: 'chatsPaciente',
+  onDelete: 'CASCADE'
+});
+Chat.belongsTo(Paciente, { 
+  foreignKey: 'idPaciente',
+  as: 'paciente',
+  onDelete: 'CASCADE'
+});
+
+// Message relationships
+Chat.hasMany(Mensaje, { 
+  foreignKey: 'idChat',
+  as: 'mensajes',
+  onDelete: 'CASCADE'
+});
+Mensaje.belongsTo(Chat, { 
+  foreignKey: 'idChat',
+  as: 'chat',
+  onDelete: 'CASCADE'
+});
+
+User.hasMany(Mensaje, { 
+  foreignKey: 'idEmisor',
+  as: 'mensajesEnviados',
+  onDelete: 'CASCADE'
+});
+Mensaje.belongsTo(User, { 
+  foreignKey: 'idEmisor',
+  as: 'emisor',
+  onDelete: 'CASCADE'
+});
+
+Psicologo.hasMany(Mensaje, {
+  foreignKey: 'idPsicologo',
+  onDelete: 'CASCADE'
+});
+Mensaje.belongsTo(Psicologo, {
+  foreignKey: 'idPsicologo',
+  onDelete: 'CASCADE'
+});
+
+Paciente.hasMany(Mensaje, {
+  foreignKey: 'idPaciente',
+  onDelete: 'CASCADE'
+});
+Mensaje.belongsTo(Paciente, {
+  foreignKey: 'idPaciente',
+  onDelete: 'CASCADE'
+});
+
 export {
   sequelize,
   User,
@@ -134,5 +200,7 @@ export {
   Prueba,
   Pregunta,
   ResultadoPrueba,
-  DisponibilidadPsicologo
+  DisponibilidadPsicologo,
+  Chat,
+  Mensaje
 };

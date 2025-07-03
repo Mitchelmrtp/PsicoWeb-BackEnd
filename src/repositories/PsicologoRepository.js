@@ -100,4 +100,39 @@ export class PsicologoRepository extends BaseRepository {
       throw new Error(`Error finding psychologist with patients: ${error.message}`);
     }
   }
+
+  async findPacientesByPsicologoId(psicologoId) {
+    try {
+      console.log(`Repository: Finding patients for psychologist ID: ${psicologoId}`);
+      
+      // Importar Paciente dinámicamente para evitar importaciones circulares
+      const { Paciente } = await import('../models/index.js');
+      
+      if (!Paciente) {
+        console.error('Failed to import Paciente model');
+        throw new Error('Failed to import Paciente model');
+      }
+      
+      // Buscar todos los pacientes asignados a este psicólogo
+      const patients = await Paciente.findAll({
+        where: { idPsicologo: psicologoId },
+        include: [{
+          model: User,
+          attributes: ['name', 'email', 'telephone', 'first_name', 'last_name']
+        }]
+      });
+      
+      console.log(`Repository: Found ${patients.length} patients for psychologist ${psicologoId}`);
+      
+      // Registrar cada paciente para depuración
+      patients.forEach((p, i) => {
+        console.log(`Repository: Patient ${i+1}: ID=${p.id}, User=${p.User?.email || 'No user'}`);
+      });
+      
+      return patients;
+    } catch (error) {
+      console.error(`Repository error finding patients for psychologist: ${error.message}`);
+      throw new Error(`Error finding patients for psychologist: ${error.message}`);
+    }
+  }
 }

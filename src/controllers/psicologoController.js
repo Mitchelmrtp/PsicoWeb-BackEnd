@@ -91,6 +91,31 @@ export const getPacientes = async (req, res) => {
     }
 };
 
+export const getPacientesByPsicologoId = async (req, res) => {
+    try {
+        const psicologoId = req.params.id;
+        console.log(`Controller: Getting patients for psychologist ID: ${psicologoId}`);
+        
+        // Verificar y registrar información de depuración
+        console.log(`Controller: Request headers:`, req.headers);
+        console.log(`Controller: Request user:`, req.user || 'No user in request');
+        
+        const result = await psicologoService.getPacientesByPsicologoId(psicologoId);
+        console.log(`Controller: Got result with status: ${result.success ? 'Success' : 'Error'}`);
+        
+        if (!result.success) {
+            console.error(`Controller: Error response - ${result.message}`);
+        } else {
+            console.log(`Controller: Found ${result.data.length} patients`);
+        }
+        
+        handleServiceResponse(res, result);
+    } catch (error) {
+        console.error(`Controller error: ${error.message}`);
+        handleServiceResponse(res, error);
+    }
+};
+
 export default {
     findAll,
     findById,
@@ -98,5 +123,6 @@ export default {
     update,
     remove,
     findPacientes,
-    getPacientes
+    getPacientes,
+    getPacientesByPsicologoId
 };
