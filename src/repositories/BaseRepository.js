@@ -30,6 +30,15 @@ export class BaseRepository extends IBaseRepository {
     }
   }
 
+  async findByIdSafe(id, options = {}) {
+    try {
+      const record = await this.model.findByPk(id, options);
+      return record; // Returns null if not found, doesn't throw
+    } catch (error) {
+      throw new Error(`Error finding record by ID: ${error.message}`);
+    }
+  }
+
   async create(data) {
     try {
       return await this.model.create(data);

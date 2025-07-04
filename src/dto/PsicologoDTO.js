@@ -6,20 +6,21 @@
 export class CreatePsicologoDTO {
   constructor(data) {
     this.id = data.id;
-    this.especialidad = data.especialidad;
-    this.licencia = data.licencia;
-    this.formacion = data.formacion;
-    this.biografia = data.biografia;
-    this.anosExperiencia = data.anosExperiencia;
-    this.tarifaPorSesion = data.tarifaPorSesion;
+    this.especialidad = data.especialidad || '';
+    this.licencia = data.licencia || '';
+    this.formacion = data.formacion || '';
+    this.biografia = data.biografia || '';
+    this.anosExperiencia = data.anosExperiencia || null;
+    this.tarifaPorSesion = data.tarifaPorSesion || null;
   }
 
   validate() {
     const errors = [];
     
-    if (!this.especialidad) errors.push('Especialidad is required');
-    if (!this.licencia) errors.push('Licencia is required');
-    if (!this.formacion) errors.push('Formacion is required');
+    // Remove mandatory validation for update operations
+    // if (!this.especialidad) errors.push('Especialidad is required');
+    // if (!this.licencia) errors.push('Licencia is required');
+    // if (!this.formacion) errors.push('Formacion is required');
     
     return errors;
   }
@@ -27,12 +28,12 @@ export class CreatePsicologoDTO {
 
 export class UpdatePsicologoDTO {
   constructor(data) {
-    this.especialidad = data.especialidad;
-    this.licencia = data.licencia;
-    this.formacion = data.formacion;
-    this.biografia = data.biografia;
-    this.anosExperiencia = data.anosExperiencia;
-    this.tarifaPorSesion = data.tarifaPorSesion;
+    this.especialidad = data.especialidad || '';
+    this.licencia = data.licencia || '';
+    this.formacion = data.formacion || '';
+    this.biografia = data.biografia || '';
+    this.anosExperiencia = data.anosExperiencia || null;
+    this.tarifaPorSesion = data.tarifaPorSesion || null;
   }
 }
 

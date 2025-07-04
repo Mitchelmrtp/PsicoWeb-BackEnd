@@ -11,6 +11,8 @@ import ResultadoPrueba from './ResultadoPrueba.js';
 import DisponibilidadPsicologo from './DisponibilidadPsicologo.js';
 import Chat from './Chat.js';
 import Mensaje from './Mensaje.js';
+import Objetivo from './Objetivo.js';
+import Ejercicio from './Ejercicio.js';
 
 // Define associations between models
 
@@ -189,6 +191,40 @@ Mensaje.belongsTo(Paciente, {
   onDelete: 'CASCADE'
 });
 
+// Objective and Exercise relationships
+Paciente.hasMany(Objetivo, {
+  foreignKey: 'idPaciente',
+  as: 'objetivos',
+  onDelete: 'CASCADE'
+});
+Objetivo.belongsTo(Paciente, {
+  foreignKey: 'idPaciente',
+  as: 'paciente',
+  onDelete: 'CASCADE'
+});
+
+Psicologo.hasMany(Objetivo, {
+  foreignKey: 'idPsicologo',
+  as: 'objetivosAsignados',
+  onDelete: 'SET NULL'
+});
+Objetivo.belongsTo(Psicologo, {
+  foreignKey: 'idPsicologo',
+  as: 'psicologo',
+  onDelete: 'SET NULL'
+});
+
+Objetivo.hasMany(Ejercicio, {
+  foreignKey: 'idObjetivo',
+  as: 'ejercicios',
+  onDelete: 'CASCADE'
+});
+Ejercicio.belongsTo(Objetivo, {
+  foreignKey: 'idObjetivo',
+  as: 'objetivo',
+  onDelete: 'CASCADE'
+});
+
 export {
   sequelize,
   User,
@@ -202,5 +238,7 @@ export {
   ResultadoPrueba,
   DisponibilidadPsicologo,
   Chat,
-  Mensaje
+  Mensaje,
+  Objetivo,
+  Ejercicio
 };

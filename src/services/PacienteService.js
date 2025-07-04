@@ -87,18 +87,22 @@ export class PacienteService {
     async updatePaciente(id, updateData, currentUser) {
         try {
             if (!validateUUID(id)) {
-                throw createErrorResponse('Invalid patient ID format', 400);
+                return createErrorResponse('Invalid patient ID format', 400);
             }
             
-            const paciente = await this.pacienteRepository.findOneByCondition({ id });
+            // Check if patient profile exists using safe method
+            const paciente = await this.pacienteRepository.findByIdSafe(id);
             
             if (!paciente) {
-                throw createErrorResponse('Patient not found', 404);
+                // If patient doesn't exist, create a new profile
+                console.log('Patient profile not found, creating new one...');
+                const createData = { id, ...updateData };
+                return await this.createPaciente(createData, currentUser);
             }
             
             // Authorization check
             if (!this.isAuthorizedToModifyPaciente(currentUser, paciente)) {
-                throw createErrorResponse('Access denied', 403);
+                return createErrorResponse('Access denied', 403);
             }
             
             await this.pacienteRepository.update(id, updateData);
@@ -106,8 +110,9 @@ export class PacienteService {
             
             return createSuccessResponse(new PacienteDTO(updatedPaciente));
         } catch (error) {
-            if (error.statusCode) throw error;
-            throw createErrorResponse('Error updating patient', 500, error.message);
+            console.error('Error in PacienteService.updatePaciente:', error);
+            if (error.statusCode) return error;
+            return createErrorResponse('Error updating patient', 500, error.message);
         }
     }
     

@@ -5,10 +5,10 @@ import Joi from 'joi';
 const pacienteService = new PacienteService();
 
 const pacienteSchema = Joi.object({
-    motivoConsulta: Joi.string().required(),
-    diagnosticoPreliminar: Joi.string().optional(),
-    diagnostico: Joi.string().optional(),
-    idPsicologo: Joi.string().optional()
+    motivoConsulta: Joi.string().optional().allow(''),
+    diagnosticoPreliminar: Joi.string().optional().allow(''),
+    diagnostico: Joi.string().optional().allow(''),
+    idPsicologo: Joi.string().optional().allow('')
 });
 
 const assignSchema = Joi.object({
@@ -65,15 +65,28 @@ export const create = async (req, res) => {
 
 export const update = async (req, res) => {
     try {
+        console.log('=== PacienteController.update ===');
+        console.log('Body received:', req.body);
+        console.log('User:', req.user);
+        console.log('Params:', req.params);
+
         const { error } = pacienteSchema.validate(req.body, { allowUnknown: true });
         if (error) {
-            return res.status(400).json({ message: 'Validation error', details: error.details });
+            console.log('Validation error:', error.details);
+            return res.status(400).json({ 
+                message: 'Validation error', 
+                details: error.details.map(detail => detail.message)
+            });
         }
 
         const pacienteId = req.params.id || req.user.userId;
+        console.log('Using paciente ID:', pacienteId);
+
         const result = await pacienteService.updatePaciente(pacienteId, req.body, req.user);
+        console.log('Service result:', result);
         handleServiceResponse(res, result);
     } catch (error) {
+        console.error('Controller error:', error);
         handleServiceResponse(res, error);
     }
 };

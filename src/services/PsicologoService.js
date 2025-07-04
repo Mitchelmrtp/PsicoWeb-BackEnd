@@ -66,9 +66,14 @@ export class PsicologoService {
         return createErrorResponse('Invalid psychologist ID format', 400);
       }
 
-      const existingPsicologo = await this.psicologoRepository.findById(id);
+      // Check if psychologist profile exists using safe method
+      const existingPsicologo = await this.psicologoRepository.findByIdSafe(id);
+      
       if (!existingPsicologo) {
-        return createErrorResponse('Psychologist profile not found', 404);
+        // If psychologist doesn't exist, create a new profile
+        console.log('Psychologist profile not found, creating new one...');
+        const createData = { id, ...psicologoData };
+        return await this.createPsicologo(createData, user);
       }
 
       const psicologo = await this.psicologoRepository.update(id, psicologoData);

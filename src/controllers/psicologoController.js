@@ -5,12 +5,18 @@ import Joi from 'joi';
 const psicologoService = new PsicologoService();
 
 const psicologoSchema = Joi.object({
-    especialidad: Joi.string().required(),
-    licencia: Joi.string().required(),
-    formacion: Joi.string().required(),
-    biografia: Joi.string().optional(),
-    anosExperiencia: Joi.number().optional(),
-    tarifaPorSesion: Joi.number().precision(2).optional()
+    especialidad: Joi.string().optional().allow(''),
+    licencia: Joi.string().optional().allow(''),
+    formacion: Joi.string().optional().allow(''),
+    biografia: Joi.string().optional().allow(''),
+    anosExperiencia: Joi.alternatives().try(
+        Joi.number().integer().min(0),
+        Joi.string().allow('')
+    ).optional(),
+    tarifaPorSesion: Joi.alternatives().try(
+        Joi.number().precision(2).min(0),
+        Joi.string().allow('')
+    ).optional()
 });
 
 export const findAll = async (req, res) => {
@@ -52,14 +58,24 @@ export const create = async (req, res) => {
 
 export const update = async (req, res) => {
     try {
+        console.log('=== PsicologoController.update ===');
+        console.log('Body received:', req.body);
+        console.log('User:', req.user);
+
         const { error } = psicologoSchema.validate(req.body, { allowUnknown: true });
         if (error) {
-            return res.status(400).json({ message: 'Validation error', details: error.details });
+            console.log('Validation error:', error.details);
+            return res.status(400).json({ 
+                message: 'Validation error', 
+                details: error.details.map(detail => detail.message)
+            });
         }
 
         const result = await psicologoService.updatePsicologo(req.user.userId, req.body, req.user);
+        console.log('Service result:', result);
         handleServiceResponse(res, result);
     } catch (error) {
+        console.error('Controller error:', error);
         handleServiceResponse(res, error);
     }
 };
