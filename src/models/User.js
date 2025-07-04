@@ -55,19 +55,7 @@ const User = sequelize.define('User', {
     createdAt: 'created_at',
     updatedAt: 'modified_at',
     deletedAt: 'deleted_at', 
-    paranoid: true, 
-    hooks: {
-        beforeCreate: async (user) => {
-            if (user.password) {
-                user.password = await bcrypt.hash(user.password, 10);
-            }
-        },
-        beforeUpdate: async (user) => {
-            if (user.changed('password')) {
-                user.password = await bcrypt.hash(user.password, 10);
-            }
-        }
-    }
+    paranoid: true
 });
 
 export default User;

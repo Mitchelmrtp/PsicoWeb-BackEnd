@@ -21,8 +21,10 @@ app.use(cors({
       process.env.FRONTEND_URL || 'http://localhost:3000',
       'http://localhost:5173', // Vite dev server default
       'http://localhost:4173',  // Vite preview default
+      'http://localhost:5000',  // Current frontend port
       'http://127.0.0.1:5173',
-      'http://127.0.0.1:4173'
+      'http://127.0.0.1:4173',
+      'http://127.0.0.1:5000'
     ];
     
     // Allow requests with no origin (like mobile apps, curl, postman)
