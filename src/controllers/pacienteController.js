@@ -26,9 +26,19 @@ export const findAll = async (req, res) => {
 
 export const findById = async (req, res) => {
     try {
+        console.log('=== PacienteController.findById ===');
+        console.log('Params:', req.params);
+        console.log('User from token:', JSON.stringify({
+            userId: req.user?.userId,
+            id: req.user?.id,
+            role: req.user?.role,
+            rol: req.user?.rol
+        }));
+        
         const result = await pacienteService.getPacienteById(req.params.id, req.user);
         handleServiceResponse(res, result);
     } catch (error) {
+        console.error('Error in PacienteController.findById:', error);
         handleServiceResponse(res, error);
     }
 };

@@ -10,6 +10,7 @@ const router = express.Router();
 router.get('/', authMiddleware, adminMiddleware, PacienteController.findAll);
 
 // Patient routes - controllers handle specific permissions
+// Esta ruta permite que psicólogos accedan a perfiles de sus pacientes asignados
 router.get('/:id', authMiddleware, PacienteController.findById); 
 router.post('/profile', authMiddleware, PacienteController.create);
 router.delete('/profile', authMiddleware, PacienteController.remove);

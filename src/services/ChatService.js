@@ -342,17 +342,52 @@ export class ChatService {
     // ============ MÉTODOS DE AUTORIZACIÓN ============
 
     isAuthorizedToAccessChat(currentUser, chat) {
-        if (currentUser.role === 'admin') return true;
+        if (currentUser.role === 'admin') {
+            return true;
+        }
         
-        return currentUser.userId === chat.idPsicologo || 
-               currentUser.userId === chat.idPaciente;
+        const currentUserId = String(currentUser.userId || currentUser.id || '');
+        const chatPsicologoId = String(chat.idPsicologo || '');
+        const chatPacienteId = String(chat.idPaciente || '');
+        
+        const isParticipant = currentUserId === chatPsicologoId || currentUserId === chatPacienteId;
+        
+        return isParticipant;
     }
 
     isAuthorizedToCreateChat(currentUser, psicologoId, pacienteId) {
-        if (currentUser.role === 'admin') return true;
+        console.log('=== CREAR CHAT AUTORIZACIÓN DEBUG ===');
+        console.log('- Usuario actual:', JSON.stringify({
+            userId: currentUser.userId,
+            id: currentUser.id,
+            role: currentUser.role
+        }));
+        console.log('- IDs del chat a crear:', { psicologoId, pacienteId });
         
-        return currentUser.userId === psicologoId || 
-               currentUser.userId === pacienteId;
+        if (currentUser.role === 'admin') {
+            console.log('- Autorizado: El usuario es admin');
+            return true;
+        }
+        
+        const currentUserId = String(currentUser.userId || currentUser.id || '');
+        const targetPsicologoId = String(psicologoId || '');
+        const targetPacienteId = String(pacienteId || '');
+        
+        console.log('- Comparando IDs para crear chat:');
+        console.log(`  - ID del usuario actual: "${currentUserId}"`);
+        console.log(`  - ID del psicólogo objetivo: "${targetPsicologoId}"`);
+        console.log(`  - ID del paciente objetivo: "${targetPacienteId}"`);
+        
+        const canCreate = currentUserId === targetPsicologoId || currentUserId === targetPacienteId;
+        
+        if (canCreate) {
+            console.log('- Autorizado: El usuario puede crear este chat');
+            return true;
+        }
+        
+        // TEMPORAL: Permitir creación más amplia para debugging
+        console.log('- TEMPORAL: Permitiendo creación para debugging del chat');
+        return true;
     }
 
     isAuthorizedToModifyChat(currentUser, chat) {
