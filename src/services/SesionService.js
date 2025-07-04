@@ -2,7 +2,9 @@ import { SesionRepository } from '../repositories/SesionRepository.js';
 import { PsicologoRepository } from '../repositories/PsicologoRepository.js';
 import { PacienteRepository } from '../repositories/PacienteRepository.js';
 import { NotificacionRepository } from '../repositories/NotificacionRepository.js';
+import { ChatRepository } from '../repositories/ChatRepository.js';
 import { CreateSesionDTO, UpdateSesionDTO, SesionResponseDTO } from '../dto/SesionDTO.js';
+import { CreateChatDTO } from '../dto/ChatDTO.js';
 import { createSuccessResponse, createErrorResponse } from '../utils/responseUtils.js';
 import { validateUUID } from '../utils/validationUtils.js';
 
@@ -17,6 +19,7 @@ export class SesionService {
     this.psicologoRepository = new PsicologoRepository();
     this.pacienteRepository = new PacienteRepository();
     this.notificacionRepository = new NotificacionRepository();
+    this.chatRepository = new ChatRepository();
   }
 
   async getAllSesiones(filters = {}, user) {
@@ -103,6 +106,64 @@ export class SesionService {
       }
 
       const sesion = await this.sesionRepository.create(sesionData);
+
+      // ===== NUEVA FUNCIONALIDAD: ASIGNACIÓN AUTOMÁTICA Y CREACIÓN DE CHAT =====
+      
+      // 1. Asignar automáticamente el psicólogo al paciente si no está asignado
+      console.log('🔄 Verificando asignación psicólogo-paciente...');
+      
+      const pacienteCompleto = await this.pacienteRepository.findById(idPaciente);
+      if (!pacienteCompleto.idPsicologo) {
+        console.log(`📝 Asignando psicólogo ${idPsicologo} al paciente ${idPaciente}`);
+        
+        await this.pacienteRepository.update(idPaciente, {
+          idPsicologo: idPsicologo
+        });
+        
+        console.log('✅ Psicólogo asignado exitosamente');
+      } else {
+        console.log('✅ El paciente ya tiene psicólogo asignado');
+      }
+
+      // 2. Crear automáticamente el chat si no existe
+      console.log('💬 Verificando existencia de chat...');
+      
+      let chat = await this.chatRepository.findChatBetweenUsers(idPsicologo, idPaciente);
+      if (!chat) {
+        console.log('🔧 Creando chat automáticamente...');
+        
+        const psicologoInfo = await this.psicologoRepository.findById(idPsicologo, { includeUser: true });
+        const pacienteInfo = await this.pacienteRepository.findById(idPaciente, { includeUser: true });
+        
+        const chatData = new CreateChatDTO({
+          idPsicologo: idPsicologo,
+          idPaciente: idPaciente,
+          titulo: `Chat con Dr. ${psicologoInfo.User?.first_name || 'Psicólogo'} ${psicologoInfo.User?.last_name || ''}`
+        });
+        
+        chat = await this.chatRepository.create(chatData);
+        console.log(`✅ Chat creado exitosamente: ${chat.id}`);
+        
+        // Crear notificación sobre el nuevo chat
+        await this.notificacionRepository.create({
+          idUsuario: idPaciente,
+          tipo: "chat",
+          contenido: `Se ha creado un chat con tu psicólogo Dr. ${psicologoInfo.User?.first_name || 'Psicólogo'}. ¡Ahora pueden comunicarse!`,
+          leido: false,
+        });
+        
+        await this.notificacionRepository.create({
+          idUsuario: idPsicologo,
+          tipo: "chat",
+          contenido: `Se ha creado un chat con tu paciente ${pacienteInfo.User?.first_name || 'Paciente'}. ¡Ahora pueden comunicarse!`,
+          leido: false,
+        });
+        
+      } else {
+        console.log('✅ El chat ya existe');
+      }
+
+      // ===== FIN DE NUEVA FUNCIONALIDAD =====
 
       // Create notification for the other party
       const receptorId = user.userId === idPsicologo ? idPaciente : idPsicologo;
