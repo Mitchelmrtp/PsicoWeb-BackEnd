@@ -19,11 +19,30 @@ export class RegistroEmocionService {
    */
   async getRegistrosByPaciente(pacienteId, options = {}) {
     try {
+      console.log('🔍 DEBUG - getRegistrosByPaciente:');
+      console.log('  - pacienteId:', pacienteId);
+      console.log('  - options:', options);
+      
       const registros = await this.registroEmocionRepository.findByPacienteId(pacienteId, options);
+      console.log('  - registros encontrados:', registros?.length || 0);
+      
+      if (registros && registros.length > 0) {
+        console.log('  - primer registro:', {
+          id: registros[0].id,
+          fechaRegistro: registros[0].fechaRegistro,
+          emociones: registros[0].emociones,
+          idPaciente: registros[0].idPaciente
+        });
+      }
+      
       const registrosDTO = RegistroEmocionDTO.fromArray(registros);
+      console.log('  - registros DTO creados:', registrosDTO?.length || 0);
+      
+      const registrosResponse = registrosDTO.map(dto => dto.toResponse());
+      console.log('  - primer registro response:', registrosResponse[0]);
       
       return createSuccessResponse({
-        registros: registrosDTO.map(dto => dto.toResponse()),
+        registros: registrosResponse,
         total: registros.length
       });
     } catch (error) {
