@@ -149,21 +149,22 @@ export class SesionService {
       // 2. Crear automáticamente el chat si no existe
       console.log("💬 Verificando existencia de chat...");
 
+      // Obtener información completa del psicólogo y paciente
+      const psicologoInfo = await this.psicologoRepository.findById(
+        idPsicologo,
+        { includeUser: true }
+      );
+      const pacienteInfo = await this.pacienteRepository.findById(
+        idPaciente,
+        { includeUser: true }
+      );
+
       let chat = await this.chatRepository.findChatBetweenUsers(
         idPsicologo,
         idPaciente
       );
       if (!chat) {
         console.log("🔧 Creando chat automáticamente...");
-
-        const psicologoInfo = await this.psicologoRepository.findById(
-          idPsicologo,
-          { includeUser: true }
-        );
-        const pacienteInfo = await this.pacienteRepository.findById(
-          idPaciente,
-          { includeUser: true }
-        );
 
         const chatData = new CreateChatDTO({
           idPsicologo: idPsicologo,
@@ -197,6 +198,48 @@ export class SesionService {
       } else {
         console.log("✅ El chat ya existe");
       }
+
+      // Preparar información para notificaciones y correos
+      const pacienteUser =
+        pacienteInfo.User || (await pacienteInfo.getUser?.());
+      const psicologoUser =
+        psicologoInfo.User || (await psicologoInfo.getUser?.());
+
+      const nombrePaciente = `${pacienteUser?.first_name || ""} ${
+        pacienteUser?.last_name || ""
+      }`.trim() || "Paciente";
+      const nombrePsicologo = `${psicologoUser?.first_name || ""} ${
+        psicologoUser?.last_name || ""
+      }`.trim() || "Psicólogo";
+
+      const fechaFormateada = new Date(
+        `${sesion.fecha}T${sesion.horaInicio}`
+      ).toLocaleString("es-PE", {
+        dateStyle: "full",
+        timeStyle: "short",
+      });
+
+      // TODO: Implementar envío de correos cuando EmailService esté disponible
+      console.log(`📧 Notificación preparada para ${nombrePaciente} y ${nombrePsicologo}`);
+      console.log(`� Cita programada para: ${fechaFormateada}`);
+
+      /*
+      if (pacienteUser?.email) {
+        await EmailService.enviarCorreo(
+          pacienteUser.email,
+          "Cita reservada exitosamente",
+          // ... contenido del correo
+        );
+      }
+
+      if (psicologoUser?.email) {
+        await EmailService.enviarCorreo(
+          psicologoUser.email,
+          "Nueva cita agendada con un paciente",
+          // ... contenido del correo
+        );
+      }
+      */
 
       // ===== FIN DE NUEVA FUNCIONALIDAD =====
 
