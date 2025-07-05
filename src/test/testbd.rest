@@ -355,3 +355,4 @@ Authorization: Bearer YOUR_TOKEN_HERE
 ### Get test result by ID (replace :id with result ID and appropriate token)
 GET http://localhost:3005/api/pruebas/resultados/123e4567-e89b-12d3-a456-426614174007
 Authorization: Bearer YOUR_TOKEN_HERE
+

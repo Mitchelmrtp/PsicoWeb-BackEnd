@@ -1,10 +1,10 @@
-import { ISesionRepository } from '../interfaces/IRepositories.js';
-import { BaseRepository } from './BaseRepository.js';
-import Sesion from '../models/Sesion.js';
-import Psicologo from '../models/Psicologo.js';
-import Paciente from '../models/Paciente.js';
-import User from '../models/User.js';
-import { Op } from 'sequelize';
+import { ISesionRepository } from "../interfaces/IRepositories.js";
+import { BaseRepository } from "./BaseRepository.js";
+import Sesion from "../models/Sesion.js";
+import Psicologo from "../models/Psicologo.js";
+import Paciente from "../models/Paciente.js";
+import User from "../models/User.js";
+import { Op } from "sequelize";
 
 /**
  * Sesion Repository Implementation
@@ -21,12 +21,14 @@ export class SesionRepository extends BaseRepository {
         { idPsicologo: psicologoId },
         {
           include: this._getDefaultIncludes(),
-          order: [['fecha', 'DESC']],
-          ...options
+          order: [["fecha", "DESC"]],
+          ...options,
         }
       );
     } catch (error) {
-      throw new Error(`Error finding sessions by psychologist: ${error.message}`);
+      throw new Error(
+        `Error finding sessions by psychologist: ${error.message}`
+      );
     }
   }
 
@@ -36,8 +38,8 @@ export class SesionRepository extends BaseRepository {
         { idPaciente: pacienteId },
         {
           include: this._getDefaultIncludes(),
-          order: [['fecha', 'ASC']],
-          ...options
+          order: [["fecha", "ASC"]],
+          ...options,
         }
       );
     } catch (error) {
@@ -48,7 +50,7 @@ export class SesionRepository extends BaseRepository {
   async findByDateRange(startDate, endDate, options = {}) {
     try {
       const dateCondition = {};
-      
+
       if (startDate && endDate) {
         dateCondition.fecha = { [Op.between]: [startDate, endDate] };
       } else if (startDate) {
@@ -59,8 +61,8 @@ export class SesionRepository extends BaseRepository {
 
       return await this.findByCondition(dateCondition, {
         include: this._getDefaultIncludes(),
-        order: [['fecha', 'ASC']],
-        ...options
+        order: [["fecha", "ASC"]],
+        ...options,
       });
     } catch (error) {
       throw new Error(`Error finding sessions by date range: ${error.message}`);
@@ -73,7 +75,7 @@ export class SesionRepository extends BaseRepository {
         { estado },
         {
           include: this._getDefaultIncludes(),
-          ...options
+          ...options,
         }
       );
     } catch (error) {
@@ -84,12 +86,12 @@ export class SesionRepository extends BaseRepository {
   async findWithFilters(filters = {}, options = {}) {
     try {
       const where = {};
-      
+
       // Apply direct ID filters
       if (filters.idPsicologo) {
         where.idPsicologo = filters.idPsicologo;
       }
-      
+
       if (filters.idPaciente) {
         where.idPaciente = filters.idPaciente;
       }
@@ -98,7 +100,9 @@ export class SesionRepository extends BaseRepository {
       if (filters.startDate || filters.endDate) {
         const dateCondition = {};
         if (filters.startDate && filters.endDate) {
-          dateCondition.fecha = { [Op.between]: [filters.startDate, filters.endDate] };
+          dateCondition.fecha = {
+            [Op.between]: [filters.startDate, filters.endDate],
+          };
         } else if (filters.startDate) {
           dateCondition.fecha = { [Op.gte]: filters.startDate };
         } else if (filters.endDate) {
@@ -114,8 +118,8 @@ export class SesionRepository extends BaseRepository {
 
       return await this.findByCondition(where, {
         include: this._getDefaultIncludes(),
-        order: [['fecha', 'ASC']],
-        ...options
+        order: [["fecha", "ASC"]],
+        ...options,
       });
     } catch (error) {
       throw new Error(`Error finding sessions with filters: ${error.message}`);
@@ -126,7 +130,7 @@ export class SesionRepository extends BaseRepository {
     try {
       return await super.findById(id, {
         include: this._getDefaultIncludes(),
-        ...options
+        ...options,
       });
     } catch (error) {
       throw new Error(`Error finding session by ID: ${error.message}`);
@@ -137,8 +141,8 @@ export class SesionRepository extends BaseRepository {
     try {
       return await super.findAll({
         include: this._getDefaultIncludes(),
-        order: [['fecha', 'ASC']],
-        ...options
+        order: [["fecha", "ASC"]],
+        ...options,
       });
     } catch (error) {
       throw new Error(`Error finding all sessions: ${error.message}`);
@@ -153,20 +157,24 @@ export class SesionRepository extends BaseRepository {
           include: [
             {
               model: Paciente,
-              attributes: ['id', 'diagnostico'],
-              include: [{
-                model: User,
-                attributes: ['first_name', 'last_name', 'email']
-              }]
-            }
+              attributes: ["id", "diagnostico"],
+              include: [
+                {
+                  model: User,
+                  attributes: ["first_name", "last_name", "email"],
+                },
+              ],
+            },
           ],
-          attributes: ['id', 'fecha', 'estado'],
-          order: [['fecha', 'DESC']],
-          ...options
+          attributes: ["id", "fecha", "estado"],
+          order: [["fecha", "DESC"]],
+          ...options,
         }
       );
     } catch (error) {
-      throw new Error(`Error finding sessions by psychologist with patients: ${error.message}`);
+      throw new Error(
+        `Error finding sessions by psychologist with patients: ${error.message}`
+      );
     }
   }
 
@@ -174,18 +182,22 @@ export class SesionRepository extends BaseRepository {
     return [
       {
         model: Psicologo,
-        include: [{
-          model: User,
-          attributes: ['name', 'first_name', 'last_name', 'email']
-        }]
+        include: [
+          {
+            model: User,
+            attributes: ["name", "first_name", "last_name", "email"],
+          },
+        ],
       },
       {
         model: Paciente,
-        include: [{
-          model: User,
-          attributes: ['name', 'first_name', 'last_name', 'email']
-        }]
-      }
+        include: [
+          {
+            model: User,
+            attributes: ["name", "first_name", "last_name", "email"],
+          },
+        ],
+      },
     ];
   }
 }
