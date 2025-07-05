@@ -49,14 +49,6 @@ export const getRegistros = async (req, res) => {
     const userRole = req.user.role;
     const { pacienteId, startDate, endDate } = req.query;
 
-    console.log('🔍 DEBUG - getRegistros:');
-    console.log('  - userId:', userId);
-    console.log('  - userRole:', userRole);
-    console.log('  - pacienteId:', pacienteId);
-    console.log('  - startDate:', startDate);
-    console.log('  - endDate:', endDate);
-    console.log('  - req.query:', req.query);
-
     let result;
 
     if (userRole === 'paciente') {
@@ -69,7 +61,6 @@ export const getRegistros = async (req, res) => {
     } else if (userRole === 'psicologo') {
       // Si es psicólogo, puede ver registros de sus pacientes o todos sus registros creados
       if (pacienteId) {
-        console.log('🎯 Buscando registros para paciente:', pacienteId);
         if (startDate && endDate) {
           result = await registroEmocionService.getRegistrosByDateRange(pacienteId, startDate, endDate);
         } else {
@@ -82,7 +73,6 @@ export const getRegistros = async (req, res) => {
       return res.status(403).json({ message: 'No tienes permisos para acceder a este recurso' });
     }
 
-    console.log('📊 Resultado del servicio:', result);
     handleServiceResponse(res, result);
   } catch (error) {
     console.error('Error in getRegistros:', error);

@@ -12,10 +12,6 @@ export class RegistroEmocionRepository extends BaseRepository {
    */
   async findByPacienteId(pacienteId, options = {}) {
     try {
-      console.log('🔍 DEBUG - findByPacienteId:');
-      console.log('  - pacienteId:', pacienteId);
-      console.log('  - options:', options);
-      
       const result = await this.model.findAll({
         where: { idPaciente: pacienteId },
         include: [
@@ -36,16 +32,6 @@ export class RegistroEmocionRepository extends BaseRepository {
         order: [['fechaRegistro', 'DESC']],
         ...options
       });
-      
-      console.log('  - registros encontrados en DB:', result?.length || 0);
-      if (result && result.length > 0) {
-        console.log('  - primer registro de DB:', {
-          id: result[0].id,
-          idPaciente: result[0].idPaciente,
-          fechaRegistro: result[0].fechaRegistro,
-          emociones: result[0].emociones
-        });
-      }
       
       return result;
     } catch (error) {
