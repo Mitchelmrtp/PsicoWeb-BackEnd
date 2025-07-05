@@ -1,14 +1,17 @@
 import { PagoRepository } from '../repositories/PagoRepository.js';
 import { SesionRepository } from '../repositories/SesionRepository.js';
 import { PacienteRepository } from '../repositories/PacienteRepository.js';
+import { PsicologoRepository } from '../repositories/PsicologoRepository.js';
 import { PagoDTO, CreatePagoDTO, ComprobanteDTO } from '../dto/PagoDTO.js';
 import { ChatService } from './ChatService.js';
+import EmailService from './EmailService.js';
 
 export class PagoService {
   constructor() {
     this.pagoRepository = new PagoRepository();
     this.sesionRepository = new SesionRepository();
     this.pacienteRepository = new PacienteRepository();
+    this.psicologoRepository = new PsicologoRepository();
     this.chatService = new ChatService();
   }
 
@@ -16,6 +19,14 @@ export class PagoService {
    * Procesa un nuevo pago
    */
   async procesarPago(pagoData) {
+    console.log('🚀 INICIO - PagoService.procesarPago() llamado');
+    console.log('📋 Datos recibidos:', {
+      idSesion: pagoData.idSesion,
+      idPaciente: pagoData.idPaciente,
+      monto: pagoData.monto,
+      metodoPago: pagoData.metodoPago
+    });
+    
     try {
       // Validar que la sesión existe
       const sesion = await this.sesionRepository.findById(pagoData.idSesion);
@@ -137,6 +148,149 @@ export class PagoService {
         console.warn('Error al crear chat automático (no crítico):', chatError.message);
       }
       
+      // ===== ENVÍO DE CORREOS AUTOMÁTICOS DESPUÉS DEL PAGO =====
+      try {
+        // Solo enviar correos si el pago fue exitoso
+        if ((estadoInicial === 'completado' || estadoInicial === 'pendiente') && sesion) {
+          console.log(`📧 Enviando correos de confirmación de cita después del pago...`);
+          console.log(`🔍 DEBUG - Estado del pago: ${estadoInicial}`);
+          console.log(`🔍 DEBUG - ID Sesión: ${sesion.id}`);
+          console.log(`🔍 DEBUG - ID Paciente: ${pagoData.idPaciente}`);
+          console.log(`🔍 DEBUG - ID Psicólogo: ${sesion.idPsicologo}`);
+          
+          // Obtener información completa del psicólogo y paciente con usuarios
+          console.log(`🔍 DEBUG - Obteniendo información del paciente...`);
+          const pacienteCompleto = await this.pacienteRepository.findById(pagoData.idPaciente, { includeUser: true });
+          console.log(`🔍 DEBUG - Paciente obtenido:`, pacienteCompleto ? 'SÍ' : 'NO');
+          
+          console.log(`🔍 DEBUG - Obteniendo información del psicólogo...`);
+          const psicologoCompleto = await this.psicologoRepository.findById(sesion.idPsicologo, { includeUser: true });
+          console.log(`🔍 DEBUG - Psicólogo obtenido:`, psicologoCompleto ? 'SÍ' : 'NO');
+
+          const pacienteUser = pacienteCompleto.User || (await pacienteCompleto.getUser?.());
+          const psicologoUser = psicologoCompleto.User || (await psicologoCompleto.getUser?.());
+
+          console.log(`🔍 DEBUG - Usuario del paciente:`, pacienteUser ? `${pacienteUser.email}` : 'NO ENCONTRADO');
+          console.log(`🔍 DEBUG - Usuario del psicólogo:`, psicologoUser ? `${psicologoUser.email}` : 'NO ENCONTRADO');
+
+          const nombrePaciente = `${pacienteUser?.first_name || ""} ${
+            pacienteUser?.last_name || ""
+          }`.trim() || "Paciente";
+          const nombrePsicologo = `${psicologoUser?.first_name || ""} ${
+            psicologoUser?.last_name || ""
+          }`.trim() || "Psicólogo";
+
+          const fechaFormateada = new Date(
+            `${sesion.fecha}T${sesion.horaInicio}`
+          ).toLocaleString("es-PE", {
+            dateStyle: "full",
+            timeStyle: "short",
+          });
+
+          // Enviar correo al paciente
+          if (pacienteUser?.email) {
+            console.log(`📧 ENVIANDO correo al paciente: ${pacienteUser.email}`);
+            const correoPaciente = `Hola ${nombrePaciente},
+
+¡Gracias por reservar tu cita en PsicoApp! 🎉
+
+Te confirmamos que has agendado exitosamente una sesión con el psicólogo ${nombrePsicologo}.
+
+📋 RESUMEN DE TU CITA:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👨‍⚕️ Psicólogo: Dr. ${nombrePsicologo}
+📅 Fecha y hora: ${fechaFormateada}
+💰 Monto pagado: S/. ${pagoCompleto.montoTotal}
+💳 Método de pago: ${pagoCompleto.metodoPago}
+💬 Chat disponible: Ya puedes comunicarte con tu psicólogo a través del chat
+🏥 Plataforma: PsicoApp
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Este encuentro representa un paso importante en tu bienestar emocional y personal. Queremos que sepas que estás dando un gran paso al priorizar tu salud mental, y estaremos aquí para acompañarte en todo el proceso.
+
+📌 RECOMENDACIONES IMPORTANTES:
+• Conéctate unos minutos antes de la sesión
+• Si necesitas reprogramar o cancelar, puedes hacerlo desde tu panel
+• Utiliza el chat para cualquier consulta previa con tu psicólogo
+• Prepara las preguntas o temas que te gustaría abordar
+
+Ante cualquier duda o inconveniente, no dudes en contactarnos.
+Nuestro equipo estará encantado de ayudarte.
+
+¡Gracias por confiar en nosotros! 💙
+El equipo de PsicoApp
+
+═══════════════════════════════════════════════════════════════════════════════
+Este correo fue generado automáticamente. Por favor, no responder a este mensaje.
+═══════════════════════════════════════════════════════════════════════════════`;
+
+            await EmailService.enviarCorreo(
+              pacienteUser.email,
+              "✅ Cita reservada y pago confirmado - PsicoApp",
+              correoPaciente
+            );
+            console.log(`✅ Correo enviado exitosamente al paciente: ${pacienteUser.email}`);
+          } else {
+            console.log(`❌ NO se puede enviar correo al paciente - Email no disponible`);
+            console.log(`🔍 DEBUG - pacienteUser:`, pacienteUser);
+          }
+
+          // Enviar correo al psicólogo
+          if (psicologoUser?.email) {
+            console.log(`📧 ENVIANDO correo al psicólogo: ${psicologoUser.email}`);
+            const correoPsicologo = `Hola Dr. ${nombrePsicologo},
+
+Te informamos que un nuevo paciente ha reservado una sesión contigo mediante PsicoApp.
+
+📋 DETALLES DE LA NUEVA CITA:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 Paciente: ${nombrePaciente}
+📅 Fecha y hora: ${fechaFormateada}
+💰 Monto: S/. ${pagoCompleto.montoTotal}
+💳 Estado del pago: ${pagoCompleto.estado}
+💬 Chat disponible: Ya puedes comunicarte con tu paciente
+🔗 Acceso: Disponible en tu panel de profesional
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📌 PRÓXIMOS PASOS:
+• Revisa los detalles desde tu panel de profesional
+• Puedes usar el chat para establecer comunicación anticipada si lo consideras apropiado
+• Prepara los materiales o enfoques que planeas utilizar en la sesión
+• Confirma tu disponibilidad para el horario programado
+
+Recuerda que tu profesionalismo y dedicación hacen la diferencia en el bienestar de nuestros usuarios.
+
+¡Gracias por formar parte de PsicoApp! 👨‍⚕️
+El bienestar comienza contigo.
+
+Atentamente,
+El equipo de PsicoApp
+
+═══════════════════════════════════════════════════════════════════════════════
+Este correo fue generado automáticamente. Por favor, no responder a este mensaje.
+═══════════════════════════════════════════════════════════════════════════════`;
+
+            await EmailService.enviarCorreo(
+              psicologoUser.email,
+              "🔔 Nueva cita agendada y pagada - PsicoApp",
+              correoPsicologo
+            );
+            console.log(`✅ Correo enviado exitosamente al psicólogo: ${psicologoUser.email}`);
+          } else {
+            console.log(`❌ NO se puede enviar correo al psicólogo - Email no disponible`);
+            console.log(`🔍 DEBUG - psicologoUser:`, psicologoUser);
+          }
+        } else {
+          console.log(`❌ NO se envían correos - Condiciones no cumplidas:`);
+          console.log(`   - Estado del pago: ${estadoInicial} (debe ser 'completado' o 'pendiente')`);
+          console.log(`   - Sesión existe: ${sesion ? 'SÍ' : 'NO'}`);
+        }
+      } catch (emailError) {
+        console.error("❌ Error enviando correos después del pago:", emailError);
+        // No fallar el pago si hay error en los correos
+      }
+      
+      console.log('🏁 FIN - PagoService.procesarPago() completado exitosamente');
       return new PagoDTO(pagoCompleto);
     } catch (error) {
       console.error('Error en PagoService.procesarPago:', error);
@@ -270,6 +424,16 @@ export class PagoService {
    * Procesa un pago y crea la sesión asociada en una transacción
    */
   async procesarPagoConSesion(data) {
+    console.log('🚀 INICIO - PagoService.procesarPagoConSesion() llamado');
+    console.log('📋 Datos recibidos:', {
+      idPaciente: data.idPaciente,
+      idPsicologo: data.idPsicologo,
+      fecha: data.fecha,
+      horaInicio: data.horaInicio,
+      monto: data.monto,
+      metodoPago: data.metodoPago
+    });
+    
     const transaction = await this.pagoRepository.model.sequelize.transaction();
     
     try {
@@ -407,7 +571,149 @@ export class PagoService {
         // No fallar el pago si hay error en la creación del chat
         console.warn('Error al crear chat automático (no crítico):', chatError.message);
       }
+
+      // ===== ENVÍO DE CORREOS AUTOMÁTICOS DESPUÉS DEL PAGO (procesarPagoConSesion) =====
+      try {
+        // Solo enviar correos si el pago fue exitoso
+        if (estadoInicial === 'completado' || estadoInicial === 'pendiente') {
+          console.log(`📧 Enviando correos de confirmación de cita después del pago (procesarPagoConSesion)...`);
+          console.log(`🔍 DEBUG - Estado del pago: ${estadoInicial}`);
+          console.log(`🔍 DEBUG - ID Sesión: ${sesion.id}`);
+          console.log(`🔍 DEBUG - ID Paciente: ${data.idPaciente}`);
+          console.log(`🔍 DEBUG - ID Psicólogo: ${data.idPsicologo}`);
+          
+          // Obtener información completa del psicólogo y paciente con usuarios
+          console.log(`🔍 DEBUG - Obteniendo información del paciente...`);
+          const pacienteCompleto = await this.pacienteRepository.findById(data.idPaciente, { includeUser: true });
+          console.log(`🔍 DEBUG - Paciente obtenido:`, pacienteCompleto ? 'SÍ' : 'NO');
+          
+          console.log(`🔍 DEBUG - Obteniendo información del psicólogo...`);
+          const psicologoCompleto = await this.psicologoRepository.findById(data.idPsicologo, { includeUser: true });
+          console.log(`🔍 DEBUG - Psicólogo obtenido:`, psicologoCompleto ? 'SÍ' : 'NO');
+
+          const pacienteUser = pacienteCompleto.User || (await pacienteCompleto.getUser?.());
+          const psicologoUser = psicologoCompleto.User || (await psicologoCompleto.getUser?.());
+
+          console.log(`🔍 DEBUG - Usuario del paciente:`, pacienteUser ? `${pacienteUser.email}` : 'NO ENCONTRADO');
+          console.log(`🔍 DEBUG - Usuario del psicólogo:`, psicologoUser ? `${psicologoUser.email}` : 'NO ENCONTRADO');
+
+          const nombrePaciente = `${pacienteUser?.first_name || ""} ${
+            pacienteUser?.last_name || ""
+          }`.trim() || "Paciente";
+          const nombrePsicologo = `${psicologoUser?.first_name || ""} ${
+            psicologoUser?.last_name || ""
+          }`.trim() || "Psicólogo";
+
+          const fechaFormateada = new Date(
+            `${data.fecha}T${data.horaInicio}`
+          ).toLocaleString("es-PE", {
+            dateStyle: "full",
+            timeStyle: "short",
+          });
+
+          // Enviar correo al paciente
+          if (pacienteUser?.email) {
+            console.log(`📧 ENVIANDO correo al paciente: ${pacienteUser.email}`);
+            const correoPaciente = `Hola ${nombrePaciente},
+
+¡Gracias por reservar tu cita en PsicoApp! 🎉
+
+Te confirmamos que has agendado exitosamente una sesión con el psicólogo ${nombrePsicologo}.
+
+📋 RESUMEN DE TU CITA:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👨‍⚕️ Psicólogo: Dr. ${nombrePsicologo}
+📅 Fecha y hora: ${fechaFormateada}
+💰 Monto pagado: S/. ${pagoCompleto.montoTotal}
+💳 Método de pago: ${pagoCompleto.metodoPago}
+💬 Chat disponible: Ya puedes comunicarte con tu psicólogo a través del chat
+🏥 Plataforma: PsicoApp
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Este encuentro representa un paso importante en tu bienestar emocional y personal. Queremos que sepas que estás dando un gran paso al priorizar tu salud mental, y estaremos aquí para acompañarte en todo el proceso.
+
+📌 RECOMENDACIONES IMPORTANTES:
+• Conéctate unos minutos antes de la sesión
+• Si necesitas reprogramar o cancelar, puedes hacerlo desde tu panel
+• Utiliza el chat para cualquier consulta previa con tu psicólogo
+• Prepara las preguntas o temas que te gustaría abordar
+
+Ante cualquier duda o inconveniente, no dudes en contactarnos.
+Nuestro equipo estará encantado de ayudarte.
+
+¡Gracias por confiar en nosotros! 💙
+El equipo de PsicoApp
+
+═══════════════════════════════════════════════════════════════════════════════
+Este correo fue generado automáticamente. Por favor, no responder a este mensaje.
+═══════════════════════════════════════════════════════════════════════════════`;
+
+            await EmailService.enviarCorreo(
+              pacienteUser.email,
+              "✅ Cita reservada y pago confirmado - PsicoApp",
+              correoPaciente
+            );
+            console.log(`✅ Correo enviado exitosamente al paciente: ${pacienteUser.email}`);
+          } else {
+            console.log(`❌ NO se puede enviar correo al paciente - Email no disponible`);
+            console.log(`🔍 DEBUG - pacienteUser:`, pacienteUser);
+          }
+
+          // Enviar correo al psicólogo
+          if (psicologoUser?.email) {
+            console.log(`📧 ENVIANDO correo al psicólogo: ${psicologoUser.email}`);
+            const correoPsicologo = `Hola Dr. ${nombrePsicologo},
+
+Te informamos que un nuevo paciente ha reservado una sesión contigo mediante PsicoApp.
+
+📋 DETALLES DE LA NUEVA CITA:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 Paciente: ${nombrePaciente}
+📅 Fecha y hora: ${fechaFormateada}
+💰 Monto: S/. ${pagoCompleto.montoTotal}
+💳 Estado del pago: ${pagoCompleto.estado}
+💬 Chat disponible: Ya puedes comunicarte con tu paciente
+🔗 Acceso: Disponible en tu panel de profesional
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📌 PRÓXIMOS PASOS:
+• Revisa los detalles desde tu panel de profesional
+• Puedes usar el chat para establecer comunicación anticipada si lo consideras apropiado
+• Prepara los materiales o enfoques que planeas utilizar en la sesión
+• Confirma tu disponibilidad para el horario programado
+
+Recuerda que tu profesionalismo y dedicación hacen la diferencia en el bienestar de nuestros usuarios.
+
+¡Gracias por formar parte de PsicoApp! 👨‍⚕️
+El bienestar comienza contigo.
+
+Atentamente,
+El equipo de PsicoApp
+
+═══════════════════════════════════════════════════════════════════════════════
+Este correo fue generado automáticamente. Por favor, no responder a este mensaje.
+═══════════════════════════════════════════════════════════════════════════════`;
+
+            await EmailService.enviarCorreo(
+              psicologoUser.email,
+              "🔔 Nueva cita agendada y pagada - PsicoApp",
+              correoPsicologo
+            );
+            console.log(`✅ Correo enviado exitosamente al psicólogo: ${psicologoUser.email}`);
+          } else {
+            console.log(`❌ NO se puede enviar correo al psicólogo - Email no disponible`);
+            console.log(`🔍 DEBUG - psicologoUser:`, psicologoUser);
+          }
+        } else {
+          console.log(`❌ NO se envían correos - Condiciones no cumplidas:`);
+          console.log(`   - Estado del pago: ${estadoInicial} (debe ser 'completado' o 'pendiente')`);
+        }
+      } catch (emailError) {
+        console.error("❌ Error enviando correos después del pago (procesarPagoConSesion):", emailError);
+        // No fallar el pago si hay error en los correos
+      }
       
+      console.log('🏁 FIN - PagoService.procesarPagoConSesion() completado exitosamente');
       return {
         pago: new PagoDTO(pagoCompleto),
         sesion: sesionCompleta,

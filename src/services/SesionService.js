@@ -3,6 +3,7 @@ import { PsicologoRepository } from "../repositories/PsicologoRepository.js";
 import { PacienteRepository } from "../repositories/PacienteRepository.js";
 import { NotificacionRepository } from "../repositories/NotificacionRepository.js";
 import { ChatRepository } from "../repositories/ChatRepository.js";
+import EmailService from "./EmailService.js";
 import {
   CreateSesionDTO,
   UpdateSesionDTO,
@@ -219,27 +220,96 @@ export class SesionService {
         timeStyle: "short",
       });
 
-      // TODO: Implementar envío de correos cuando EmailService esté disponible
-      console.log(`📧 Notificación preparada para ${nombrePaciente} y ${nombrePsicologo}`);
-      console.log(`� Cita programada para: ${fechaFormateada}`);
+      // ===== ENVÍO DE CORREOS AUTOMÁTICOS =====
+      console.log(`📧 Enviando notificaciones por correo a ${nombrePaciente} y ${nombrePsicologo}`);
+      console.log(`📅 Cita programada para: ${fechaFormateada}`);
 
-      /*
-      if (pacienteUser?.email) {
-        await EmailService.enviarCorreo(
-          pacienteUser.email,
-          "Cita reservada exitosamente",
-          // ... contenido del correo
-        );
-      }
+      try {
+        // Enviar correo al paciente
+        if (pacienteUser?.email) {
+          const correoPaciente = `Hola ${nombrePaciente},
 
-      if (psicologoUser?.email) {
-        await EmailService.enviarCorreo(
-          psicologoUser.email,
-          "Nueva cita agendada con un paciente",
-          // ... contenido del correo
-        );
+¡Gracias por reservar tu cita en PsicoApp! 🎉
+
+Te confirmamos que has agendado exitosamente una sesión con el psicólogo ${nombrePsicologo}.
+
+📋 RESUMEN DE TU CITA:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👨‍⚕️ Psicólogo: Dr. ${nombrePsicologo}
+📅 Fecha y hora: ${fechaFormateada}
+💬 Chat disponible: Ya puedes comunicarte con tu psicólogo a través del chat
+🏥 Plataforma: PsicoApp
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Este encuentro representa un paso importante en tu bienestar emocional y personal. Queremos que sepas que estás dando un gran paso al priorizar tu salud mental, y estaremos aquí para acompañarte en todo el proceso.
+
+📌 RECOMENDACIONES IMPORTANTES:
+• Conéctate unos minutos antes de la sesión
+• Si necesitas reprogramar o cancelar, puedes hacerlo desde tu panel
+• Utiliza el chat para cualquier consulta previa con tu psicólogo
+• Prepara las preguntas o temas que te gustaría abordar
+
+Ante cualquier duda o inconveniente, no dudes en contactarnos.
+Nuestro equipo estará encantado de ayudarte.
+
+¡Gracias por confiar en nosotros! 💙
+El equipo de PsicoApp
+
+═══════════════════════════════════════════════════════════════════════════════
+Este correo fue generado automáticamente. Por favor, no responder a este mensaje.
+═══════════════════════════════════════════════════════════════════════════════`;
+
+          await EmailService.enviarCorreo(
+            pacienteUser.email,
+            "✅ Cita reservada exitosamente - PsicoApp",
+            correoPaciente
+          );
+          console.log(`✅ Correo enviado exitosamente al paciente: ${pacienteUser.email}`);
+        }
+
+        // Enviar correo al psicólogo
+        if (psicologoUser?.email) {
+          const correoPsicologo = `Hola Dr. ${nombrePsicologo},
+
+Te informamos que un nuevo paciente ha reservado una sesión contigo mediante PsicoApp.
+
+📋 DETALLES DE LA NUEVA CITA:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 Paciente: ${nombrePaciente}
+📅 Fecha y hora: ${fechaFormateada}
+💬 Chat disponible: Ya puedes comunicarte con tu paciente
+🔗 Acceso: Disponible en tu panel de profesional
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📌 PRÓXIMOS PASOS:
+• Revisa los detalles desde tu panel de profesional
+• Puedes usar el chat para establecer comunicación anticipada si lo consideras apropiado
+• Prepara los materiales o enfoques que planeas utilizar en la sesión
+• Confirma tu disponibilidad para el horario programado
+
+Recuerda que tu profesionalismo y dedicación hacen la diferencia en el bienestar de nuestros usuarios.
+
+¡Gracias por formar parte de PsicoApp! 👨‍⚕️
+El bienestar comienza contigo.
+
+Atentamente,
+El equipo de PsicoApp
+
+═══════════════════════════════════════════════════════════════════════════════
+Este correo fue generado automáticamente. Por favor, no responder a este mensaje.
+═══════════════════════════════════════════════════════════════════════════════`;
+
+          await EmailService.enviarCorreo(
+            psicologoUser.email,
+            "🔔 Nueva cita agendada con un paciente - PsicoApp",
+            correoPsicologo
+          );
+          console.log(`✅ Correo enviado exitosamente al psicólogo: ${psicologoUser.email}`);
+        }
+      } catch (emailError) {
+        console.error("❌ Error enviando correos:", emailError);
+        // No fallar la creación de sesión si hay error en los correos
       }
-      */
 
       // ===== FIN DE NUEVA FUNCIONALIDAD =====
 

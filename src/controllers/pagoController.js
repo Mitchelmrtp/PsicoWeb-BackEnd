@@ -10,6 +10,10 @@ class PagoController {
    * POST /api/pagos
    */
   procesarPago = async (req, res) => {
+    console.log('🎯 INICIO - PagoController.procesarPago() llamado');
+    console.log('📋 Body recibido:', req.body);
+    console.log('👤 Usuario:', { userId: req.user.userId, role: req.user.role });
+    
     try {
       const { 
         idSesion, 
@@ -286,6 +290,10 @@ class PagoController {
    * POST /api/pagos/procesar-con-sesion
    */
   procesarPagoConSesion = async (req, res) => {
+    console.log('🎯 INICIO - PagoController.procesarPagoConSesion() llamado');
+    console.log('📋 Body recibido:', req.body);
+    console.log('👤 Usuario:', { userId: req.user.userId, role: req.user.role });
+    
     try {
       const { 
         // Datos del pago
