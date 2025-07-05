@@ -12,6 +12,7 @@ import notificationRoutes from "./src/routes/notificationRoutes.js";
 import chatRoutes from "./src/routes/chatRoutes.js";
 import objetivoRoutes from "./src/routes/objetivoRoutes.js";
 import ejercicioRoutes from "./src/routes/ejercicioRoutes.js";
+import registroEmocionRoutes from "./src/routes/registroEmocionRoutes.js";
 
 const app = express();
 
@@ -152,6 +153,7 @@ app.use("/api/notificaciones", notificationRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/objetivos", objetivoRoutes);
 app.use("/api/ejercicios", ejercicioRoutes);
+app.use("/api/emociones", registroEmocionRoutes);
 
 app.use((err, req, res, next) => {
   if (err.code === "LIMIT_FILE_TYPES") {

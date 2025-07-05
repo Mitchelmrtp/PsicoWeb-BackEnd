@@ -13,6 +13,7 @@ import Chat from './Chat.js';
 import Mensaje from './Mensaje.js';
 import Objetivo from './Objetivo.js';
 import Ejercicio from './Ejercicio.js';
+import RegistroEmocion from './RegistroEmocion.js';
 
 // Define associations between models
 
@@ -225,6 +226,40 @@ Ejercicio.belongsTo(Objetivo, {
   onDelete: 'CASCADE'
 });
 
+// Registros de Emociones
+Paciente.hasMany(RegistroEmocion, {
+  foreignKey: 'idPaciente',
+  as: 'registrosEmociones',
+  onDelete: 'CASCADE'
+});
+RegistroEmocion.belongsTo(Paciente, {
+  foreignKey: 'idPaciente',
+  as: 'paciente',
+  onDelete: 'CASCADE'
+});
+
+Psicologo.hasMany(RegistroEmocion, {
+  foreignKey: 'idPsicologo',
+  as: 'registrosEmocionesCreados',
+  onDelete: 'CASCADE'
+});
+RegistroEmocion.belongsTo(Psicologo, {
+  foreignKey: 'idPsicologo',
+  as: 'psicologo',
+  onDelete: 'CASCADE'
+});
+
+Sesion.hasMany(RegistroEmocion, {
+  foreignKey: 'idSesion',
+  as: 'registrosEmociones',
+  onDelete: 'SET NULL'
+});
+RegistroEmocion.belongsTo(Sesion, {
+  foreignKey: 'idSesion',
+  as: 'sesion',
+  onDelete: 'SET NULL'
+});
+
 export {
   sequelize,
   User,
@@ -240,5 +275,6 @@ export {
   Chat,
   Mensaje,
   Objetivo,
-  Ejercicio
+  Ejercicio,
+  RegistroEmocion
 };
