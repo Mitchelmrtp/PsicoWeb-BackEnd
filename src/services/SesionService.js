@@ -198,6 +198,72 @@ export class SesionService {
         console.log("✅ El chat ya existe");
       }
 
+      const pacienteUser =
+        pacienteInfo.User || (await pacienteInfo.getUser?.());
+      const psicologoUser =
+        psicologoInfo.User || (await psicologoInfo.getUser?.());
+
+      const nombrePaciente = `${pacienteUser.first_name || ""} ${
+        pacienteUser.last_name || ""
+      }`.trim();
+      const nombrePsicologo = `${psicologoUser.first_name || ""} ${
+        psicologoUser.last_name || ""
+      }`.trim();
+
+      const fechaFormateada = new Date(
+        `${sesion.fecha}T${sesion.horaInicio}`
+      ).toLocaleString("es-PE", {
+        dateStyle: "full",
+        timeStyle: "short",
+      });
+
+      if (pacienteUser?.email) {
+        await EmailService.enviarCorreo(
+          pacienteUser.email,
+          "Cita reservada exitosamente",
+          `Hola ${nombrePaciente},
+
+          ¡Gracias por reservar tu cita en PsicoApp!
+
+          Te confirmamos que has agendado exitosamente una sesión con el psicólogo ${nombrePsicologo}.
+          🗓 Fecha y hora de la cita: ${fechaFormateada}
+
+          Este encuentro representa un paso importante en tu bienestar emocional y personal. Queremos que sepas que estás dando un gran paso al priorizar tu salud mental, y estaremos aquí para acompañarte en todo el proceso.
+
+          📌 Recomendaciones:
+          - Conéctate unos minutos antes de la sesión.
+          - Si necesitas reprogramar o cancelar, puedes hacerlo desde tu panel.
+
+          Ante cualquier duda o inconveniente, no dudes en contactarnos.  
+          Nuestro equipo estará encantado de ayudarte.
+
+          Gracias por confiar en nosotros.  
+          El equipo de PsicoApp`
+        );
+      }
+
+      if (psicologoUser?.email) {
+        await EmailService.enviarCorreo(
+          psicologoUser.email,
+          "Nueva cita agendada con un paciente",
+          `Hola ${nombrePsicologo},
+
+          Te informamos que un nuevo paciente ha reservado una sesión contigo mediante PsicoApp.
+
+          👤 Paciente: ${nombrePaciente}  
+          🗓 Fecha y hora de la cita: ${fechaFormateada}
+
+          Por favor, asegúrate de revisar los detalles desde tu panel de profesional.  
+          Puedes usar el chat disponible para establecer comunicación anticipada si lo crees conveniente.
+
+          Gracias por formar parte de PsicoApp.  
+          El bienestar comienza contigo.
+
+          Atentamente,  
+          El equipo de PsicoApp`
+        );
+      }
+
       // ===== FIN DE NUEVA FUNCIONALIDAD =====
 
       // Create notification for the other party
