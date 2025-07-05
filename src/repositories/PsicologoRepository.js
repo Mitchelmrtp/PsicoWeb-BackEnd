@@ -17,6 +17,7 @@ export class PsicologoRepository extends BaseRepository {
       return await this.findById(id, {
         include: [{
           model: User,
+          as: 'User',
           attributes: ['name', 'email', 'telephone', 'first_name', 'last_name']
         }]
       });
@@ -32,6 +33,7 @@ export class PsicologoRepository extends BaseRepository {
         {
           include: [{
             model: User,
+            as: 'User',
             attributes: ['name', 'email', 'telephone', 'first_name', 'last_name']
           }]
         }
@@ -46,6 +48,7 @@ export class PsicologoRepository extends BaseRepository {
       return await super.findAll({
         include: [{
           model: User,
+          as: 'User',
           attributes: ['name', 'email', 'telephone', 'first_name', 'last_name']
         }],
         ...options
@@ -60,6 +63,7 @@ export class PsicologoRepository extends BaseRepository {
       return await super.findById(id, {
         include: [{
           model: User,
+          as: 'User',
           attributes: ['name', 'email', 'telephone', 'first_name', 'last_name']
         }],
         ...options
@@ -85,12 +89,14 @@ export class PsicologoRepository extends BaseRepository {
         include: [
           {
             model: User,
+            as: 'User',
             attributes: ['name', 'email', 'telephone', 'first_name', 'last_name']
           },
           {
             model: Paciente,
             include: [{
               model: User,
+              as: 'User',
               attributes: ['name', 'email', 'first_name', 'last_name', 'telephone']
             }]
           }
@@ -118,6 +124,7 @@ export class PsicologoRepository extends BaseRepository {
         where: { idPsicologo: psicologoId },
         include: [{
           model: User,
+          as: 'User',
           attributes: ['name', 'email', 'telephone', 'first_name', 'last_name']
         }]
       });
