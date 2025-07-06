@@ -14,6 +14,7 @@ import Mensaje from './Mensaje.js';
 import Objetivo from './Objetivo.js';
 import Ejercicio from './Ejercicio.js';
 import RegistroEmocion from './RegistroEmocion.js';
+import Pago from './Pago.js';
 
 // Define associations between models
 
@@ -260,6 +261,29 @@ RegistroEmocion.belongsTo(Sesion, {
   onDelete: 'SET NULL'
 });
 
+// Pago associations
+Sesion.hasMany(Pago, {
+  foreignKey: 'idSesion',
+  as: 'pagos',
+  onDelete: 'CASCADE'
+});
+Pago.belongsTo(Sesion, {
+  foreignKey: 'idSesion',
+  as: 'sesion',
+  onDelete: 'CASCADE'
+});
+
+Paciente.hasMany(Pago, {
+  foreignKey: 'idPaciente',
+  as: 'pagos',
+  onDelete: 'CASCADE'
+});
+Pago.belongsTo(Paciente, {
+  foreignKey: 'idPaciente',
+  as: 'paciente',
+  onDelete: 'CASCADE'
+});
+
 export {
   sequelize,
   User,
@@ -276,5 +300,6 @@ export {
   Mensaje,
   Objetivo,
   Ejercicio,
-  RegistroEmocion
+  RegistroEmocion,
+  Pago
 };

@@ -26,7 +26,7 @@ const Notificacion = sequelize.define(
       type: DataTypes.TEXT,
       allowNull: false,
     },
-    fecha_creacion: {
+    fechaNotificacion: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
     },
@@ -37,11 +37,22 @@ const Notificacion = sequelize.define(
   },
   {
     tableName: "notificacion",
-    timestamps: false,
+    timestamps: true,
+    createdAt: "created_at",
+    updatedAt: "modified_at",
+    paranoid: true,
+    indexes: [
+      {
+        fields: ["idUsuario", "created_at"],
+      },
+      {
+        fields: ["leido"],
+      },
+    ],
   }
 );
 
-User.hasOne(Notificacion, { foreignKey: "idUsuario", as: "notificacion" });
+User.hasMany(Notificacion, { foreignKey: "idUsuario", as: "notificaciones" });
 Notificacion.belongsTo(User, { foreignKey: "idUsuario", as: "usuario" });
 
 export default Notificacion;

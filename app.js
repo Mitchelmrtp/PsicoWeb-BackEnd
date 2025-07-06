@@ -13,7 +13,11 @@ import chatRoutes from "./src/routes/chatRoutes.js";
 import objetivoRoutes from "./src/routes/objetivoRoutes.js";
 import ejercicioRoutes from "./src/routes/ejercicioRoutes.js";
 import registroEmocionRoutes from "./src/routes/registroEmocionRoutes.js";
+<<<<<<< HEAD
 import informeRoutes from "./src/routes/informeRoutes.js";  // Agregado para informes
+=======
+import pagoRoutes from "./src/routes/pagoRoutes.js";
+>>>>>>> 95a83368d659dee281c5fe51eba1d2f63d2bc7fe
 
 const app = express();
 
@@ -155,6 +159,7 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/objetivos", objetivoRoutes);
 app.use("/api/ejercicios", ejercicioRoutes);
 app.use("/api/emociones", registroEmocionRoutes);
+app.use("/api/pagos", pagoRoutes);
 
 // Rutas de Informes
 app.use("/api/informes", informeRoutes);  // Nueva ruta para informes

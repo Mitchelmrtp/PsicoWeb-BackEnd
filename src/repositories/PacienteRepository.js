@@ -19,6 +19,7 @@ export class PacienteRepository extends BaseRepository {
         {
           include: [{
             model: User,
+            as: 'User',
             attributes: ['name', 'email', 'telephone', 'first_name', 'last_name']
           }]
         }
@@ -33,6 +34,7 @@ export class PacienteRepository extends BaseRepository {
       return await this.findById(id, {
         include: [{
           model: User,
+          as: 'User',
           attributes: ['name', 'email', 'telephone', 'first_name', 'last_name']
         }]
       });
@@ -46,6 +48,7 @@ export class PacienteRepository extends BaseRepository {
       return await super.findAll({
         include: [{
           model: User,
+          as: 'User',
           attributes: ['name', 'email', 'telephone', 'first_name', 'last_name']
         }],
         ...options
@@ -60,6 +63,7 @@ export class PacienteRepository extends BaseRepository {
       return await this.model.findByPk(id, {
         include: [{
           model: User,
+          as: 'User',
           attributes: ['name', 'email', 'telephone', 'first_name', 'last_name']
         }],
         ...options
@@ -84,6 +88,7 @@ export class PacienteRepository extends BaseRepository {
       const mergedOptions = {
         include: [{
           model: User,
+          as: 'User',
           attributes: ['name', 'email', 'telephone', 'first_name', 'last_name']
         }],
         ...options

@@ -81,10 +81,14 @@ export class RegistroEmocionService {
         return createErrorResponse('Estructura de emociones inválida', 400);
       }
 
+      // Calcular intensidad promedio
+      const intensidadPromedio = this.calculateIntensidadPromedio(data.emociones);
+
       const registroData = {
         ...data,
         idPsicologo: psicologoId,
-        fechaRegistro: new Date()
+        fechaRegistro: new Date(),
+        intensidadPromedio
       };
 
       const nuevoRegistro = await this.registroEmocionRepository.create(registroData);
@@ -277,5 +281,16 @@ export class RegistroEmocionService {
       console.error('Error in RegistroEmocionService.getRegistrosByDateRange:', error);
       return createErrorResponse('Error al obtener registros por rango de fechas', 500);
     }
+  }
+
+  /**
+   * Calcula la intensidad promedio de las emociones
+   */
+  calculateIntensidadPromedio(emociones) {
+    const valores = Object.values(emociones).filter(valor => typeof valor === 'number');
+    if (valores.length === 0) return 0;
+    
+    const suma = valores.reduce((acc, valor) => acc + valor, 0);
+    return parseFloat((suma / valores.length).toFixed(2));
   }
 }
