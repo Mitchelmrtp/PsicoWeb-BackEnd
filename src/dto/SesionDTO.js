@@ -33,6 +33,8 @@ export class UpdateSesionDTO {
     this.horaFin = data.horaFin;
     this.notas = data.notas;
     this.estado = data.estado;
+    this.cantidadReprogramaciones = data.cantidadReprogramaciones;
+    this.costoAdicional = data.costoAdicional;
   }
 }
 
@@ -46,6 +48,8 @@ export class SesionResponseDTO {
     this.horaFin = sesion.horaFin;
     this.notas = sesion.notas;
     this.estado = sesion.estado;
+    this.cantidadReprogramaciones = sesion.cantidadReprogramaciones || 0;
+    this.costoAdicional = sesion.costoAdicional || 0;
     this.created_at = sesion.created_at;
     this.modified_at = sesion.modified_at;
     
@@ -55,6 +59,9 @@ export class SesionResponseDTO {
     }
     if (sesion.Paciente) {
       this.Paciente = sesion.Paciente;
+    }
+    if (sesion.Pago) {
+      this.Pago = sesion.Pago;
     }
   }
 }

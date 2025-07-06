@@ -42,8 +42,18 @@ const Sesion = sequelize.define('Sesion', {
         allowNull: true
     },
     estado: {
-        type: DataTypes.ENUM('programada', 'completada', 'cancelada'),
+        type: DataTypes.ENUM('programada', 'completada', 'cancelada', 'reprogramada'),
         defaultValue: 'programada'
+    },
+    cantidadReprogramaciones: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
+        allowNull: false
+    },
+    costoAdicional: {
+        type: DataTypes.DECIMAL(10, 2),
+        defaultValue: 0.00,
+        allowNull: false
     }
 }, {
     tableName: 'sesion',

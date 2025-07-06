@@ -12,7 +12,7 @@ const sesionSchema = Joi.object({
   horaFin: Joi.string().required(),
   notas: Joi.string().optional(),
   estado: Joi.string()
-    .valid("programada", "completada", "cancelada")
+    .valid("programada", "completada", "cancelada", "reprogramada")
     .default("programada"),
 });
 
@@ -22,8 +22,10 @@ const updateSchema = Joi.object({
   horaFin: Joi.string().optional(),
   notas: Joi.string().optional(),
   estado: Joi.string()
-    .valid("programada", "completada", "cancelada")
+    .valid("programada", "completada", "cancelada", "reprogramada")
     .optional(),
+  cantidadReprogramaciones: Joi.number().integer().min(0).optional(),
+  costoAdicional: Joi.number().min(0).optional(),
 });
 
 export const findAll = async (req, res) => {

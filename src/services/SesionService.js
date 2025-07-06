@@ -76,18 +76,45 @@ export class SesionService {
         return createErrorResponse("Session not found", 404);
       }
 
-      // Check authorization
-      if (
-        user.role !== "admin" &&
-        user.userId !== sesion.idPsicologo &&
-        user.userId !== sesion.idPaciente
-      ) {
+      // Get user ID with fallback
+      const currentUserId = user.userId || user.id;
+      console.log('🔍 Checking session access:', {
+        sessionId: id,
+        currentUserId,
+        userRole: user.role,
+        psicologoId: sesion.idPsicologo,
+        pacienteId: sesion.idPaciente
+      });
+
+      // Check authorization - be more flexible with role checking
+      const isAdmin = user.role === "admin";
+      const isPsicologoOwner = currentUserId === sesion.idPsicologo;
+      const isPacienteOwner = currentUserId === sesion.idPaciente;
+      const isPsicologoRole = user.role === "psicologo";
+      const isPacienteRole = user.role === "paciente";
+
+      // Allow access if:
+      // 1. User is admin
+      // 2. User is the psychologist of this session
+      // 3. User is the patient of this session
+      // 4. User has psychologist role and is owner
+      // 5. User has patient role and is owner
+      if (!isAdmin && !isPsicologoOwner && !isPacienteOwner && 
+          !(isPsicologoRole && isPsicologoOwner) && 
+          !(isPacienteRole && isPacienteOwner)) {
+        console.log('❌ Access denied for user:', {
+          userId: currentUserId,
+          role: user.role,
+          sessionPsicologo: sesion.idPsicologo,
+          sessionPaciente: sesion.idPaciente
+        });
         return createErrorResponse(
           "You are not authorized to view this session",
           403
         );
       }
 
+      console.log('✅ Access granted for session:', id);
       return createSuccessResponse(new SesionResponseDTO(sesion));
     } catch (error) {
       console.error("Error in SesionService.getSesionById:", error);
@@ -355,21 +382,77 @@ Este correo fue generado automáticamente. Por favor, no responder a este mensaj
       // Check patient permissions
       if (user.userId === sesion.idPaciente && user.role !== "admin") {
         const { estado, fecha, horaInicio, horaFin, notas } = sesionData;
-        if (
-          (estado && estado !== "cancelada") ||
-          fecha ||
-          horaInicio ||
-          horaFin ||
-          notas
-        ) {
+        
+        // Patients can cancel, reschedule, or confirm attendance (but not confirm - that's for psychologists)
+        const allowedStates = ["cancelada", "reprogramada"];
+        
+        if (estado && !allowedStates.includes(estado)) {
           return createErrorResponse(
-            "As a patient, you can only cancel the session",
+            "As a patient, you can only cancel or reschedule the session",
+            403
+          );
+        }
+        
+        // If changing state to reprogramada, allow date/time changes and handle reprogramming logic
+        if (estado === "reprogramada") {
+          if (!fecha && !horaInicio && !horaFin) {
+            return createErrorResponse(
+              "When rescheduling, you must provide new date and time",
+              400
+            );
+          }
+          
+          // Increment reprogramming count
+          const currentCount = sesion.cantidadReprogramaciones || 0;
+          sesionData.cantidadReprogramaciones = currentCount + 1;
+          
+          // Calculate additional cost for patients (second reprogramming onwards)
+          if (user.role === "paciente" && currentCount >= 1) {
+            // Get psychologist's rate for cost calculation
+            const psicologo = await this.psicologoRepository.findById(sesion.idPsicologo);
+            const additionalCost = (psicologo?.tarifaPorSesion || 50) * 0.1;
+            sesionData.costoAdicional = (sesion.costoAdicional || 0) + additionalCost;
+            
+            console.log(`💰 Additional cost applied: $${additionalCost} (Total: $${sesionData.costoAdicional})`);
+          }
+        }
+        
+        // If not rescheduling, don't allow date/time/notes changes
+        if (estado !== "reprogramada" && (fecha || horaInicio || horaFin || notas)) {
+          return createErrorResponse(
+            "As a patient, you can only modify date/time when rescheduling",
             403
           );
         }
       }
 
-      const updatedSesion = await this.sesionRepository.update(id, sesionData);
+      // Check psychologist permissions for confirming attendance
+      if (sesionData.estado === "completada" && user.userId !== sesion.idPsicologo && user.role !== "admin") {
+        return createErrorResponse(
+          "Only psychologists can confirm session attendance",
+          403
+        );
+      }
+
+      // Handle rescheduling logic
+      const updateData = { ...sesionData };
+      
+      if (sesionData.estado === "reprogramada") {
+        const currentCount = sesion.cantidadReprogramaciones || 0;
+        updateData.cantidadReprogramaciones = currentCount + 1;
+        
+        // Calculate additional cost for patients on second+ rescheduling
+        if (user.userId === sesion.idPaciente && currentCount >= 1) {
+          // Get psychologist rate for cost calculation
+          const psicologo = await this.psicologoRepository.findById(sesion.idPsicologo);
+          const baseRate = psicologo?.tarifaPorSesion || 50;
+          const additionalCost = baseRate * 0.1; // 10% additional cost
+          
+          updateData.costoAdicional = (sesion.costoAdicional || 0) + additionalCost;
+        }
+      }
+
+      const updatedSesion = await this.sesionRepository.update(id, updateData);
 
       // Create notification for the other party
       const receptorId =
@@ -380,6 +463,17 @@ Este correo fue generado automáticamente. Por favor, no responder a este mensaj
 
       if (sesionData.estado === "cancelada") {
         contenido = "Una de tus sesiones ha sido cancelada.";
+      } else if (sesionData.estado === "completada") {
+        contenido = "Se ha confirmado la asistencia a una sesión.";
+      } else if (sesionData.estado === "reprogramada") {
+        const costNote = updateData.costoAdicional > 0 
+          ? ` Se aplicó un costo adicional de $${(updateData.costoAdicional - (sesion.costoAdicional || 0)).toFixed(2)}.`
+          : "";
+        contenido = `Una sesión ha sido reprogramada para: ${
+          sesionData.fecha || sesion.fecha
+        }, ${sesionData.horaInicio || sesion.horaInicio} - ${
+          sesionData.horaFin || sesion.horaFin
+        }.${costNote}`;
       } else if (
         sesionData.fecha ||
         sesionData.horaInicio ||
